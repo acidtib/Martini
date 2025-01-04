@@ -14,3 +14,17 @@ Since TypeScript cannot handle type information for `.vue` imports, they are shi
 2. Reload the VS Code window by running `Developer: Reload Window` from the command palette.
 
 You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/volar/discussions/471).
+
+
+bump version
+```
+npx tauri-version patch --no-git
+
+$ npx tauri-version patch # `v0.0.2` -> `v0.0.3` - Commit message `0.0.3`
+$ npx tauri-version minor # `v0.0.2` -> `v0.1.0` - Commit message `0.1.0`
+$ npx tauri-version major # `v0.0.2` -> `v1.0.0` - Commit message `1.0.0`
+$ npx tauri-version 123 # `v0.0.2` -> `v123` - Customize version. commit message `123`
+
+Prevent git commit
+$ tauri-version patch --no-git
+```
