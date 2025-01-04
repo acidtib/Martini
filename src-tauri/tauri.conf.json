@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "martini",
+  "productName": "Martini",
   "version": "0.1.0",
   "identifier": "com.martini.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "martini",
+        "title": "Martini",
         "width": 800,
         "height": 600
       }
