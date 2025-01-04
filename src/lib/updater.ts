@@ -16,12 +16,12 @@ export async function checkForUpdates() {
       await update.downloadAndInstall((event) => {
         switch (event.event) {
           case 'Started':
-            contentLength = event.data.contentLength
+            contentLength = event.data.contentLength || 0
             console.log(`Started downloading ${event.data.contentLength} bytes`)
             break
           case 'Progress':
             downloaded += event.data.chunkLength
-            const progress = (downloaded / contentLength) * 100
+            const progress = contentLength > 0 ? (downloaded / contentLength) * 100 : 0
             console.log(`Downloaded ${progress.toFixed(2)}%`)
             break
           case 'Finished':
