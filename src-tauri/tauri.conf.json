@@ -35,7 +35,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIxM0FBQkM3MzVFOTNEMUQKUldRZFBlazF4NnM2c1hYdUNNcFBSV2xiVVlNTENOeTk1WGhYSXRZSHpJWmhzaStVVXVtYTdlVzgK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU3QzczNURDNzRFN0Q4NDkKUldSSjJPZDAzRFhINTROUDRiMFByWkZSWk0zWjFuMjIyWXJyTWJVM1ZKc3BrQWlVM2F3RGt1WlgK",
       "endpoints": [
         "https://github.com/acidtib/Martini/releases/latest/download/latest.json"
       ],
