@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Screenshot Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1e1e1e;
+            color: white;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div>Screenshot Viewer</div>
+    <script type="module">
+        import { Window } from '@tauri-apps/api/window';
+
+        const appWindow = new Window('screenshot-viewer');
+
+        appWindow.once('tauri://created', function () {
+            console.log('Window created successfully');
+        });
+
+        appWindow.once('tauri://error', function (e) {
+            console.error('Error creating window:', e);
+        });
+    </script>
+</body>
+</html>

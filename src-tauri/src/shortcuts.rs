@@ -1,8 +1,8 @@
 use tauri::App;
+use tauri::Manager;
 use tauri::Emitter;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use crate::screenshot;
-use base64::Engine;
 
 pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(desktop)]
@@ -15,14 +15,10 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn std::error::Error
                     if shortcut == &ctrl_shift_m && event.state() == ShortcutState::Pressed {
                         println!("Taking screenshot...");
                         match screenshot::capture_window(&["firefox", "hunt", "Hunt: Showdown"]) {
-                            Ok(png_data) => {
-                                // Convert PNG data to base64
-                                let base64_image = base64::engine::general_purpose::STANDARD.encode(&png_data);
-                                let data_url = format!("data:image/png;base64,{}", base64_image);
-                                
-                                // Emit the screenshot data to the frontend
-                                if let Err(e) = app_handle.emit("screenshot-taken", data_url) {
-                                    println!("Failed to emit screenshot data: {}", e);
+                            Ok(_) => {
+                                // Tell the main window to create the viewer window
+                                if let Err(e) = app_handle.emit("open-viewer", ()) {
+                                    println!("Failed to emit open-viewer event: {}", e);
                                 }
                             },
                             Err(e) => println!("Failed to capture screenshot: {}", e),
