@@ -13,8 +13,10 @@
     "windows": [
       {
         "title": "Martini",
-        "width": 800,
-        "height": 600
+        "width": 500,
+        "height": 700,
+        "minWidth": 500,
+        "minHeight": 700
       }
     ],
     "security": {

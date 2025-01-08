@@ -1,51 +1,174 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { ref, onMounted } from 'vue';
+import { listen } from '@tauri-apps/api/event';
 
-const greetMsg = ref("");
-const name = ref("");
+const screenshotData = ref<string | null>(null);
 
-async function greet() {
-  // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-  greetMsg.value = await invoke("greet", { name: name.value });
-}
+onMounted(() => {
+  listen('screenshot-taken', (event: any) => {
+    screenshotData.value = event.payload as string;
+  });
+});
 </script>
 
 <template>
   <main class="container">
-    <h1>Welcome to Tauri + Vue</h1>
+    <div class="welcome-content">
+      <h1 class="title">Welcome to <span class="highlight">Martini</span></h1>
+      <div class="card">
+        <p class="description">
+          This is a tech demo that showcases screen capture capabilities.
+        </p>
+        <div class="shortcut-container">
+          <p class="shortcut-text">To try it out, press</p>
+          <div class="shortcut-keys">
+            <kbd>Control</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>
+          </div>
+        </div>
+      </div>
 
-    <div class="row">
-      <a href="https://vitejs.dev" target="_blank">
-        <img src="/vite.svg" class="logo vite" alt="Vite logo" />
-      </a>
-      <a href="https://tauri.app" target="_blank">
-        <img src="/tauri.svg" class="logo tauri" alt="Tauri logo" />
-      </a>
-      <a href="https://vuejs.org/" target="_blank">
-        <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-      </a>
+      <!-- Screenshot display area -->
+      <div v-if="screenshotData" class="screenshot-container">
+        <img :src="screenshotData" alt="Screenshot" class="screenshot" />
+      </div>
     </div>
-    <p>Click on the Tauri, Vite, and Vue logos to learn more.</p>
-
-    <form class="row" @submit.prevent="greet">
-      <input id="greet-input" v-model="name" placeholder="Enter a name..." />
-      <button type="submit">Greet</button>
-    </form>
-    <p>{{ greetMsg }}</p>
   </main>
 </template>
 
 <style scoped>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
 }
 
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #249b73);
+.welcome-content {
+  max-width: 800px;
+  animation: fadeIn 0.8s ease-out;
+  width: 100%;
 }
 
+.title {
+  font-size: 3rem;
+  margin-bottom: 2rem;
+  color: #2c3e50;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.highlight {
+  background: linear-gradient(120deg, #3498db, #2980b9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding: 0 0.2em;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(5px);
+  transition: transform 0.3s ease;
+  margin-bottom: 2rem;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.description {
+  font-size: 1.25rem;
+  line-height: 1.6;
+  color: #34495e;
+  margin-bottom: 1.5rem;
+}
+
+.shortcut-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.shortcut-text {
+  font-size: 1.1rem;
+  color: #666;
+}
+
+.shortcut-keys {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+kbd {
+  background-color: #ffffff;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  display: inline-block;
+  font-family: 'SF Mono', 'Segoe UI Mono', monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.5em 0.75em;
+  color: #0366d6;
+  transition: all 0.2s ease;
+}
+
+kbd:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+}
+
+.screenshot-container {
+  margin-top: 2rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.5s ease-out;
+}
+
+.screenshot {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .title {
+    font-size: 2.5rem;
+  }
+  
+  .card {
+    padding: 1.5rem;
+  }
+  
+  .description {
+    font-size: 1.1rem;
+  }
+}
 </style>
+
 <style>
 :root {
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
@@ -62,99 +185,4 @@ async function greet() {
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
 }
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
-}
-
 </style>
