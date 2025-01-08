@@ -11,8 +11,8 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn std::error::Error
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |_app, shortcut, event| {
                     if shortcut == &ctrl_shift_m && event.state() == ShortcutState::Pressed {
-                        println!("Taking screenshot of Notepad...");
-                        match screenshot::capture_and_save_window("firefox") {
+                        println!("Taking screenshot of Hunt: Showdown...");
+                        match screenshot::capture_and_save_window(&["hunt", "Hunt: Showdown"]) {
                             Ok(filename) => println!("Screenshot saved as: {}", filename),
                             Err(e) => println!("Failed to capture screenshot: {}", e),
                         }

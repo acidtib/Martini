@@ -15,8 +15,8 @@ pub struct WindowInfo {
 }
 
 /// Captures a window screenshot by partial title match and returns the image data as PNG
-pub fn capture_window(window_title: &str) -> Result<Vec<u8>, Box<dyn Error>> {
-    let window = find_window(window_title)?;
+pub fn capture_window(window_titles: &[&str]) -> Result<Vec<u8>, Box<dyn Error>> {
+    let window = find_window(window_titles)?;
     
     // Capture the window image
     let image = window.capture_image()?;
@@ -29,20 +29,15 @@ pub fn capture_window(window_title: &str) -> Result<Vec<u8>, Box<dyn Error>> {
 }
 
 /// Captures a window screenshot and saves it to a file
-pub fn capture_and_save_window(window_title: &str) -> Result<String, Box<dyn Error>> {
-    let window = find_window(window_title)?;
-    
-    // Capture the window image
-    let image = window.capture_image()?;
-
-    // Generate unique filename with timestamp
+pub fn capture_and_save_window(window_titles: &[&str]) -> Result<String, Box<dyn Error>> {
+    let png_data = capture_window(window_titles)?;
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)?
         .as_secs();
-    let filename = format!("{}_{}.png", window_title, timestamp);
+    let filename = format!("screenshot_{}.png", timestamp);
 
     // Save the image
-    image.save(&filename)?;
+    std::fs::write(&filename, png_data)?;
 
     Ok(filename)
 }
@@ -63,20 +58,32 @@ pub fn list_windows() -> Result<Vec<WindowInfo>, Box<dyn Error>> {
         .collect())
 }
 
-/// Helper function to find a window by partial title
-fn find_window(window_title: &str) -> Result<Window, Box<dyn Error>> {
-    let windows = Window::all()?;
-    let window = windows
-        .into_iter()
-        .find(|w| w.title().to_lowercase().contains(&window_title.to_lowercase()))
-        .ok_or_else(|| format!("Window with title containing '{}' not found", window_title))?;
-
-    // Skip minimized windows as they can't be captured properly
-    if window.is_minimized() {
-        return Err("Window is minimized and cannot be captured".into());
+/// Helper function to find a window by trying multiple partial title matches
+fn find_window(window_titles: &[&str]) -> Result<Window, Box<dyn Error>> {
+    println!("Looking for window with possible titles: {:?}", window_titles);
+    println!("\nAvailable windows:");
+    if let Ok(windows) = list_windows() {
+        for window in windows {
+            println!("- Title: '{}', App: '{}'", window.title, window.app_name);
+        }
     }
 
-    Ok(window)
+    let windows = Window::all()?;
+    for window_title in window_titles {
+        if let Some(window) = windows
+            .iter()
+            .find(|w| w.title().to_lowercase().contains(&window_title.to_lowercase()))
+        {
+            println!("Found window with title: '{}'", window.title());
+            return Ok(window.clone());
+        }
+    }
+    
+    Err(format!(
+        "No window found matching any of these titles: {:?}",
+        window_titles
+    )
+    .into())
 }
 
 #[cfg(test)]
@@ -86,7 +93,7 @@ mod tests {
 
     #[test]
     fn test_capture_window() {
-        match capture_window("test window") {
+        match capture_window(&["test window"]) {
             Ok(png_data) => {
                 fs::write("test_capture.png", png_data).unwrap();
                 assert!(fs::metadata("test_capture.png").unwrap().len() > 0);
