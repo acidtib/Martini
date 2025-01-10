@@ -6,7 +6,8 @@
     "linux"
   ],
   "windows": [
-    "main"
+    "main",
+    "screenshot-viewer"
   ],
   "permissions": [
     "window-state:default",
@@ -15,6 +16,11 @@
     "global-shortcut:allow-is-registered",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
-    "core:window:allow-create"
+    "core:window:allow-create",
+    "core:window:allow-show",
+    "core:window:allow-set-visible-on-all-workspaces",
+    "core:window:allow-set-focus",
+    "core:webview:allow-create-webview",
+    "core:webview:allow-set-webview-focus"
   ]
 }
