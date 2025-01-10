@@ -17,13 +17,16 @@ pub struct WindowInfo {
 /// Captures a window screenshot by partial title match and returns the image data as PNG
 pub fn capture_window(window_titles: &[&str]) -> Result<Vec<u8>, Box<dyn Error>> {
     let window = find_window(window_titles)?;
-    
+
     // Capture the window image
     let image = window.capture_image()?;
 
     // Convert to PNG
     let mut png_data = Vec::new();
-    image.write_to(&mut std::io::Cursor::new(&mut png_data), image::ImageFormat::Png)?;
+    image.write_to(
+        &mut std::io::Cursor::new(&mut png_data),
+        image::ImageFormat::Png,
+    )?;
 
     Ok(png_data)
 }
@@ -31,9 +34,7 @@ pub fn capture_window(window_titles: &[&str]) -> Result<Vec<u8>, Box<dyn Error>>
 /// Captures a window screenshot and saves it to a file
 pub fn capture_and_save_window(window_titles: &[&str]) -> Result<String, Box<dyn Error>> {
     let png_data = capture_window(window_titles)?;
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_secs();
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
     let filename = format!("screenshot_{}.png", timestamp);
 
     // Save the image
@@ -60,7 +61,10 @@ pub fn list_windows() -> Result<Vec<WindowInfo>, Box<dyn Error>> {
 
 /// Helper function to find a window by trying multiple partial title matches
 fn find_window(window_titles: &[&str]) -> Result<Window, Box<dyn Error>> {
-    println!("Looking for window with possible titles: {:?}", window_titles);
+    println!(
+        "Looking for window with possible titles: {:?}",
+        window_titles
+    );
     println!("\nAvailable windows:");
     if let Ok(windows) = list_windows() {
         for window in windows {
@@ -70,15 +74,16 @@ fn find_window(window_titles: &[&str]) -> Result<Window, Box<dyn Error>> {
 
     let windows = Window::all()?;
     for window_title in window_titles {
-        if let Some(window) = windows
-            .iter()
-            .find(|w| w.title().to_lowercase().contains(&window_title.to_lowercase()))
-        {
+        if let Some(window) = windows.iter().find(|w| {
+            w.title()
+                .to_lowercase()
+                .contains(&window_title.to_lowercase())
+        }) {
             println!("Found window with title: '{}'", window.title());
             return Ok(window.clone());
         }
     }
-    
+
     Err(format!(
         "No window found matching any of these titles: {:?}",
         window_titles

@@ -12,7 +12,9 @@ checkForUpdates().catch(console.error);
 createApp(App).mount('#app')
 
 // Listen for the open-viewer event
-listen('open-viewer', async () => {
+listen('open-viewer', async (event) => {
+    console.log(event.payload);
+
     try {
         // Try to get existing window first
         let viewerWindow = await Window.getByLabel('screenshot-viewer');
