@@ -22,7 +22,7 @@ listen('open-viewer', async (event) => {
         if (!viewerWindow) {
             // Create new window if it doesn't exist
             viewerWindow = new Window('screenshot-viewer', {
-                title: 'Screenshot Viewer',
+                title: 'Martini -Screenshot Viewer',
                 width: 800,
                 height: 600,
                 resizable: true,
@@ -39,7 +39,7 @@ listen('open-viewer', async (event) => {
         if (!viewerWebview) {
             // Create webview and set up event listeners
             viewerWebview = new Webview(viewerWindow, 'screenshot-viewer-view', {
-                url: 'viewer.html',
+                url: 'screenshot-view/index.html',
                 x: 0,
                 y: 0,
                 width: 800,

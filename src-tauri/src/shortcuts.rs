@@ -36,10 +36,10 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn std::error::Error
                                     return;
                                 }
 
-                                // Give the window more time to initialize
+                                // // Give the window more time to initialize
                                 // std::thread::sleep(std::time::Duration::from_millis(1000));
 
-                                // Send the screenshot data to the viewer
+                                // // Send the screenshot data to the viewer
                                 // if let Err(e) = app_handle.emit(
                                 //     "screenshot-data",
                                 //     serde_json::json!({
