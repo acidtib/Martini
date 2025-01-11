@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import router from './lib/router'
 import App from './App.vue'
 import { listen } from '@tauri-apps/api/event'
 import { Window } from '@tauri-apps/api/window'
@@ -9,7 +10,7 @@ import { checkForUpdates } from './lib/updater';
 checkForUpdates().catch(console.error);
 
 // Create and mount the Vue app
-createApp(App).mount('#app')
+createApp(App).use(router).mount('#app')
 
 // Listen for the open-viewer event
 listen('open-viewer', async (event) => {
@@ -22,7 +23,7 @@ listen('open-viewer', async (event) => {
         if (!viewerWindow) {
             // Create new window if it doesn't exist
             viewerWindow = new Window('screenshot-viewer', {
-                title: 'Martini -Screenshot Viewer',
+                title: 'Martini - Screenshot Viewer',
                 width: 800,
                 height: 600,
                 resizable: true,
@@ -39,7 +40,7 @@ listen('open-viewer', async (event) => {
         if (!viewerWebview) {
             // Create webview and set up event listeners
             viewerWebview = new Webview(viewerWindow, 'screenshot-viewer-view', {
-                url: 'screenshot-view/index.html',
+                url: '/screenshot',
                 x: 0,
                 y: 0,
                 width: 800,

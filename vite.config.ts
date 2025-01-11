@@ -1,4 +1,3 @@
-import { resolve } from 'path';
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
@@ -30,12 +29,4 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
-  build: {
-    rollupOptions: {
-      input: {
-        main: resolve( __dirname, 'index.html'),
-        windows: resolve( __dirname , "screenshot-view/index.html"),
-      }
-    }
-  }
 }));
