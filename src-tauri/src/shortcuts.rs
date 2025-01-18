@@ -26,22 +26,12 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn std::error::Error
 
                                 // Tell the main window to save the screenshot
                                 if let Err(e) = app_handle.emit("new-screenshot", serde_json::json!({
-                                    "image": base64_image.clone()
+                                    "image": base64_image.clone(),
+                                    "name": "screenshot.png"
                                 })) {
                                     println!("Failed to emit new-screenshot event: {}", e);
                                     return;
                                 }
-
-                                // // Tell the main window to create/show the viewer window
-                                // if let Err(e) = app_handle.emit("open-viewer", serde_json::json!({
-                                //     "event": "open-viewer",
-                                //     "data": {
-                                //         "image": base64_image
-                                //     }
-                                // })) {
-                                //     println!("Failed to emit open-viewer event: {}", e);
-                                //     return;
-                                // }
                             }
                             Err(e) => println!("Failed to capture screenshot: {}", e),
                         }

@@ -40,9 +40,8 @@ pub fn run() {
             sql: r#"
                     CREATE TABLE IF NOT EXISTS screenshots (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT,
                         image BLOB NOT NULL,
-                        filename TEXT,
-                        mime_type TEXT,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
                 "#,

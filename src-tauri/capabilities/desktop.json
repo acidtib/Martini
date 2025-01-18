@@ -18,6 +18,7 @@
     "global-shortcut:allow-unregister",
     "core:window:allow-create",
     "core:window:allow-show",
+    "core:window:allow-close",
     "core:window:allow-set-visible-on-all-workspaces",
     "core:window:allow-set-focus",
     "core:webview:allow-create-webview",
