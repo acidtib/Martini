@@ -1,13 +1,27 @@
 import { createWebHistory, createRouter } from 'vue-router'
 
-import HomeView from '../views/HomeView.vue'
-import SettingsView from '../views/SettingsView.vue'
-import ScreenshotView from '../views/ScreenshotView.vue'
+import AppLayout from '../layouts/AppLayout.vue'
+import BlankLayout from '../layouts/BlankLayout.vue'
 
 const routes = [
-  { path: '/', name: 'home', component: HomeView },
-  { path: '/settings', name: 'settings', component: SettingsView },
-  { path: '/screenshot', name: 'screenshot', component: ScreenshotView },
+  { 
+    path: '/', 
+    name: 'home', 
+    meta: { layout: AppLayout },
+    component: () => import('../views/HomeView.vue')
+  },
+  { 
+    path: '/settings', 
+    name: 'settings', 
+    meta: { layout: AppLayout },
+    component: () => import('../views/SettingsView.vue')
+  },
+  { 
+    path: '/screenshot', 
+    name: 'screenshot', 
+    meta: { layout: BlankLayout },
+    component: () => import('../views/ScreenshotView.vue')
+  },
 ]
 
 const router = createRouter({
