@@ -4,7 +4,6 @@ use base64::Engine;
 use serde_json;
 use tauri::App;
 use tauri::Emitter;
-use tauri::Manager;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
@@ -25,30 +24,23 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn std::error::Error
                                 let base64_image = STANDARD.encode(&image_data);
                                 println!("Base64 image size: {} chars", base64_image.len());
 
-                                // Tell the main window to create/show the viewer window
-                                if let Err(e) = app_handle.emit("open-viewer", serde_json::json!({
-                                    "event": "open-viewer",
-                                    "data": {
-                                        "image": base64_image
-                                    }
+                                // Tell the main window to save the screenshot
+                                if let Err(e) = app_handle.emit("new-screenshot", serde_json::json!({
+                                    "image": base64_image.clone()
                                 })) {
-                                    println!("Failed to emit open-viewer event: {}", e);
+                                    println!("Failed to emit new-screenshot event: {}", e);
                                     return;
                                 }
 
-                                // // Give the window more time to initialize
-                                // std::thread::sleep(std::time::Duration::from_millis(1000));
-
-                                // // Send the screenshot data to the viewer
-                                // if let Err(e) = app_handle.emit(
-                                //     "screenshot-data",
-                                //     serde_json::json!({
-                                //         "base64Image": base64_image
-                                //     }),
-                                // ) {
-                                //     println!("Failed to emit screenshot data: {}", e);
-                                // } else {
-                                //     println!("Screenshot data sent successfully");
+                                // // Tell the main window to create/show the viewer window
+                                // if let Err(e) = app_handle.emit("open-viewer", serde_json::json!({
+                                //     "event": "open-viewer",
+                                //     "data": {
+                                //         "image": base64_image
+                                //     }
+                                // })) {
+                                //     println!("Failed to emit open-viewer event: {}", e);
+                                //     return;
                                 // }
                             }
                             Err(e) => println!("Failed to capture screenshot: {}", e),
