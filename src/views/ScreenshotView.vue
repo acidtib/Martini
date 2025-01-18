@@ -32,7 +32,6 @@ onMounted(() => {
 
 <template>
   <div class="screenshot-viewer">
-    <h2>Screenshot Viewer</h2>
     <div v-if="latestScreenshot" class="screenshot-container">
       <img :src="`data:image/png;base64,${latestScreenshot.image}`" :alt="latestScreenshot.name" />
       <div class="screenshot-info">

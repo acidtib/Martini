@@ -1,6 +1,5 @@
 import { listen } from '@tauri-apps/api/event'
-import { Window } from '@tauri-apps/api/window'
-import { Webview, getAllWebviews } from '@tauri-apps/api/webview'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import Database from '@tauri-apps/plugin-sql'
 
 // Define the type for the screenshot payload
@@ -35,49 +34,32 @@ export const initializeEventListeners = () => {
         }
 
         // Try to get existing window first
-        let viewerWindow = await Window.getByLabel('screenshot-viewer');
+        let viewerWindow = await WebviewWindow.getByLabel('screenshot-viewer');
             
         if (viewerWindow) {
             // Close existing window
             await viewerWindow.close();
         }
 
-        viewerWindow = new Window('screenshot-viewer', {
+        viewerWindow = new WebviewWindow('screenshot-viewer', {
             title: 'Screenshot Viewer - Martini',
-            width: 800,
-            height: 600,
+            url: '/screenshot',
+            width: 920,
+            height: 580,
+            minWidth: 920,
+            minHeight: 580,
             resizable: true,
             center: true
+          });
+
+        viewerWindow.once('tauri://created', async () => {
+            console.log('Viewer window created successfully');
+            await viewerWindow.setFocus();
         });
 
-        // Check for existing viewer webview and close it
-        const existingWebviews = await getAllWebviews();
-        let viewerWebview = existingWebviews.find(w => w.label === 'screenshot-viewer-view');
-
-        console.log('Existing webviews:', viewerWebview);
-        
-        if (!viewerWebview) {
-            // Create webview and set up event listeners
-            viewerWebview = new Webview(viewerWindow, 'screenshot-viewer-view', {
-                url: '/screenshot',
-                x: 0,
-                y: 0,
-                width: 800,
-                height: 600
-            });
-        }
-
-        viewerWebview.once('tauri://created', () => {
-            console.log('Viewer webview created successfully');
-            viewerWebview.setFocus();
+        viewerWindow.once('tauri://error', (e) => {
+            console.error('Error creating viewerWindow:', e);
         });
-
-        viewerWebview.once('tauri://error', (e) => {
-            console.error('Error creating viewer webview:', e);
-        });
-
-        await viewerWindow.setVisibleOnAllWorkspaces(true);
-        await viewerWindow.setFocus();
         
         console.log('Viewer window ready');
     });
