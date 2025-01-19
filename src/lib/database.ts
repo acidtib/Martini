@@ -145,6 +145,51 @@ class Screenshot extends Model<ScreenshotAttributes> {
   }
 }
 
+// Settings Model
+interface SettingsAttributes extends ModelAttributes {
+  key: string
+  value: string
+  created_at: string
+  updated_at: string
+}
+
+class Settings extends Model<SettingsAttributes> {
+  tableName = 'settings'
+
+  static async get(key: string): Promise<string | null> {
+    const setting = await this.findOne({
+      where: { key }
+    })
+    return setting?.attributes.value || null
+  }
+
+  static async set(key: string, value: string): Promise<Settings> {
+    const now = new Date().toISOString()
+    const existing = await this.findOne({ where: { key } })
+
+    if (existing) {
+      existing.attributes.value = value
+      existing.attributes.updated_at = now
+      return existing.save()
+    }
+
+    const setting = new Settings({
+      key,
+      value,
+      created_at: now,
+      updated_at: now
+    })
+    return setting.save()
+  }
+}
+
 // Export database instance and models
-// Export database instance and models
-export { Screenshot, Model, type ModelAttributes, type QueryOptions, type ScreenshotAttributes }
+export { 
+  Screenshot, 
+  Settings, 
+  Model, 
+  type ModelAttributes, 
+  type QueryOptions, 
+  type ScreenshotAttributes, 
+  type SettingsAttributes 
+}

@@ -25,7 +25,7 @@ onMounted(() => {
       <img :src="`data:image/png;base64,${latestScreenshot.image}`" :alt="latestScreenshot.name" />
       <div class="screenshot-info">
         <p>Name: {{ latestScreenshot.name }}</p>
-        <p>Taken: {{ new Date(latestScreenshot.createdAt).toLocaleString() }}</p>
+        <p>Taken: {{ new Date(latestScreenshot.created_at).toLocaleString() }}</p>
       </div>
     </div>
     <div v-else class="no-screenshot">
