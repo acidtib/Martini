@@ -50,6 +50,21 @@ pub fn run() {
     ];
 
     tauri::Builder::default()
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api: _, .. } => { 
+                // if the main window is closing also close the other windows that couls be opened
+                if window.label() == "main" {
+                    let windows = window.windows();
+                    for (label, win) in windows {
+                        if label != "main" {
+                            if let Err(e) = win.close() {
+                                eprintln!("Failed to close window {}: {}", label, e);
+                            }
+                        }
+                    }
+                }
+            } _ => {} 
+        })
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:app.db", migrations)
@@ -57,6 +72,7 @@ pub fn run() {
         )
         .setup(|app| {
             shortcuts::register_shortcuts(app)?;
+            
             Ok(())
         })
         .plugin(tauri_plugin_process::init())
