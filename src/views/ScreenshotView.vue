@@ -1,26 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import Database from '@tauri-apps/plugin-sql'
-
-interface Screenshot {
-  id: number
-  name: string
-  image: string
-  created_at: string
-}
+import { db } from '../lib/database'
+import type { Screenshot } from '../lib/database'
 
 const latestScreenshot = ref<Screenshot | null>(null)
 
 const loadLatestScreenshot = async () => {
   try {
-    const db = await Database.load('sqlite:app.db')
-    const result = await db.select<Screenshot[]>('SELECT * FROM screenshots ORDER BY created_at DESC LIMIT 1')
-    
-    if (result.length > 0) {
-      latestScreenshot.value = result[0]
-    }
+    latestScreenshot.value = await db.getLatestScreenshot()
   } catch (error) {
-    console.error('Error loading screenshot:', error)
+    console.error('Error loading latest screenshot:', error)
   }
 }
 
