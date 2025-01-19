@@ -1,135 +1,150 @@
-// import { db } from '../lib/database'
-// 
-// // Add a screenshot
-// await db.addScreenshot('name', 'base64image')
-//
-// // Get latest screenshot
-// const latest = await db.getLatestScreenshot()
-//
-// // Update a screenshot
-// await db.updateScreenshot(1, { name: 'new name' })
-//
-// // Delete a screenshot
-// await db.deleteScreenshot(1)
-
-
 import Database from '@tauri-apps/plugin-sql'
 
-export interface Screenshot {
-  name: string
-  image: string
-  created_at: string
+// Base interfaces
+interface ModelAttributes {
+  id?: number
+  [key: string]: any
 }
 
-class DatabaseClient {
-  private static instance: DatabaseClient
-  private db: Database | null = null
-  private readonly dbUrl = 'sqlite:app.db'
+interface QueryOptions {
+  where?: { [key: string]: any }
+  limit?: number
+  orderBy?: { column: string; direction: 'ASC' | 'DESC' }
+}
 
-  private constructor() {}
+type Constructor<M> = {
+  new (attrs: any): M & { tableName: string }
+  find(options?: QueryOptions): Promise<M[]>
+  findOne(options?: QueryOptions): Promise<M | null>
+}
 
-  public static getInstance(): DatabaseClient {
-    if (!DatabaseClient.instance) {
-      DatabaseClient.instance = new DatabaseClient()
-    }
-    return DatabaseClient.instance
+// Base Model class
+abstract class Model<T extends ModelAttributes> {
+  protected static db: Database | null = null
+  protected static readonly dbUrl = 'sqlite:app.db'
+  
+  abstract tableName: string
+  attributes: T
+
+  constructor(attributes: T) {
+    this.attributes = attributes
   }
 
-  private async ensureConnection(): Promise<Database> {
+  protected static async getDb(): Promise<Database> {
     if (!this.db) {
       this.db = await Database.load(this.dbUrl)
     }
     return this.db
   }
 
-  // Create a new screenshot
-  async addScreenshot(name: string, image: string): Promise<Screenshot> {
-    const db = await this.ensureConnection()
-    const created_at = new Date().toISOString()
+  protected buildWhereClause(where: { [key: string]: any }): { query: string; params: any[] } {
+    const conditions: string[] = []
+    const params: any[] = []
     
-    // This is ok for now since we only care about 1 screenshot per session
-    // the summary screen
-    // Delete all previous screenshots
-    await db.execute('DELETE FROM screenshots')
+    Object.entries(where).forEach(([key, value]) => {
+      conditions.push(`${key} = ?`)
+      params.push(value)
+    })
     
-    // Insert the new screenshot    
-    await db.execute(
-      'INSERT INTO screenshots (name, image, created_at) VALUES ($1, $2, $3)',
-      [name, image, created_at]
-    )
+    return {
+      query: conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '',
+      params
+    }
+  }
+
+  async save(): Promise<this> {
+    const db = await (this.constructor as typeof Model).getDb()
+    const { id, ...attrs } = this.attributes
     
-    const result = await db.select<Screenshot[]>(
-      'SELECT * FROM screenshots ORDER BY id DESC LIMIT 1'
-    )
-    
-    if (!result.length) {
-      throw new Error('Failed to create screenshot')
+    if (id) {
+      // Update
+      const setClauses = Object.keys(attrs).map(key => `${key} = ?`).join(', ')
+      const values = [...Object.values(attrs), id]
+      
+      await db.execute(
+        `UPDATE ${this.tableName} SET ${setClauses} WHERE id = ?`,
+        values
+      )
+    } else {
+      // Insert
+      const columns = Object.keys(attrs).join(', ')
+      const placeholders = Object.keys(attrs).map(() => '?').join(', ')
+      const values = Object.values(attrs)
+      
+      const result = await db.execute(
+        `INSERT INTO ${this.tableName} (${columns}) VALUES (${placeholders})`,
+        values
+      )
+      this.attributes.id = result.lastInsertId
     }
     
-    return result[0]
+    return this
   }
 
-  // Get a screenshot by ID
-  async getScreenshot(id: number): Promise<Screenshot | null> {
-    const db = await this.ensureConnection()
-    const result = await db.select<Screenshot[]>(
-      'SELECT * FROM screenshots WHERE id = $1',
-      [id]
-    )
-    return result.length > 0 ? result[0] : null
-  }
-
-  // Get latest screenshot
-  async getLatestScreenshot(): Promise<Screenshot | null> {
-    const db = await this.ensureConnection()
-    const result = await db.select<Screenshot[]>(
-      'SELECT * FROM screenshots ORDER BY created_at DESC LIMIT 1'
-    )
-    return result.length > 0 ? result[0] : null
-  }
-
-  // Get all screenshots
-  async getAllScreenshots(): Promise<Screenshot[]> {
-    const db = await this.ensureConnection()
-    const result = await db.select<Screenshot[]>(
-      'SELECT * FROM screenshots ORDER BY created_at DESC'
-    )
-    return result
-  }
-
-  // Update a screenshot
-  async updateScreenshot(id: number, data: Partial<Screenshot>): Promise<boolean> {
-    const db = await this.ensureConnection()
-    const updates: string[] = []
-    const values: any[] = []
-    let paramCount = 1
-
-    Object.entries(data).forEach(([key, value]) => {
-      if (key !== 'id' && key !== 'created_at') {
-        updates.push(`${key} = $${paramCount}`)
-        values.push(value)
-        paramCount++
-      }
-    })
-
-    if (updates.length === 0) return false
-
-    values.push(id)
-    const query = `UPDATE screenshots SET ${updates.join(', ')} WHERE id = $${paramCount}`
+  async delete(): Promise<void> {
+    if (!this.attributes.id) throw new Error('Cannot delete unsaved model')
     
-    const result = await db.execute(query, values)
-    return result.rowsAffected > 0
+    const db = await (this.constructor as typeof Model).getDb()
+    await db.execute(
+      `DELETE FROM ${this.tableName} WHERE id = ?`,
+      [this.attributes.id]
+    )
   }
 
-  // Delete a screenshot
-  async deleteScreenshot(id: number): Promise<boolean> {
-    const db = await this.ensureConnection()
-    const result = await db.execute(
-      'DELETE FROM screenshots WHERE id = $1',
-      [id]
-    )
-    return result.rowsAffected > 0
+  static async find<M extends Model<any>>(
+    this: Constructor<M>,
+    options: QueryOptions = {}
+  ): Promise<M[]> {
+    const db = await Model.getDb()
+    const instance = new this({})
+    
+    let query = `SELECT * FROM ${instance.tableName}`
+    const params: any[] = []
+
+    if (options.where) {
+      const whereClause = instance.buildWhereClause(options.where)
+      query += whereClause.query
+      params.push(...whereClause.params)
+    }
+
+    if (options.orderBy) {
+      query += ` ORDER BY ${options.orderBy.column} ${options.orderBy.direction}`
+    }
+
+    if (options.limit) {
+      query += ` LIMIT ${options.limit}`
+    }
+
+    const results = await db.select<Record<string, any>[]>(query, params)
+    return results.map((result: Record<string, any>) => new this(result))
+  }
+
+  static async findOne<M extends Model<any>>(
+    this: Constructor<M>,
+    options: QueryOptions = {}
+  ): Promise<M | null> {
+    const results = await this.find({ ...options, limit: 1 })
+    return results[0] || null
   }
 }
 
-export const db = DatabaseClient.getInstance()
+// Screenshot Model
+interface ScreenshotAttributes extends ModelAttributes {
+  name: string
+  image: string
+  created_at: string
+}
+
+class Screenshot extends Model<ScreenshotAttributes> {
+  tableName = 'screenshots'
+
+  static async latest(): Promise<Screenshot | null> {
+    return this.findOne({
+      orderBy: { column: 'created_at', direction: 'DESC' }
+    })
+  }
+}
+
+// Export database instance and models
+// Export database instance and models
+export { Screenshot, Model, type ModelAttributes, type QueryOptions, type ScreenshotAttributes }

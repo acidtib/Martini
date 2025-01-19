@@ -1,6 +1,6 @@
 import { listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { db } from './database'
+import { Screenshot } from './database'
 
 // Define the type for the screenshot payload
 interface ScreenshotPayload {
@@ -38,7 +38,8 @@ export const initializeEventListeners = () => {
 
         try {
             const { image, name = 'screenshot.png' } = event.payload
-            await db.addScreenshot(name, image)
+            const screenshot = new Screenshot({ name, image, created_at: new Date().toISOString() })
+            await screenshot.save()
 
             console.log('Screenshot saved to database');
 
