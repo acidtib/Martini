@@ -1,8 +1,9 @@
 import Database from '@tauri-apps/plugin-sql'
 
 // Base interfaces
-interface ModelAttributes {
+interface BaseModel {
   id?: number
+  created_at?: string
   [key: string]: any
 }
 
@@ -12,23 +13,15 @@ interface QueryOptions {
   orderBy?: { column: string; direction: 'ASC' | 'DESC' }
 }
 
-type Constructor<M> = {
-  new (attrs: any): M & { tableName: string }
-  find(options?: QueryOptions): Promise<M[]>
-  findOne(options?: QueryOptions): Promise<M | null>
-}
-
 // Base Model class
-abstract class Model<T extends ModelAttributes> {
+abstract class Model<T extends BaseModel> {
   protected static db: Database | null = null
   protected static readonly dbUrl = 'sqlite:app.db'
   
-  abstract tableName: string
-  attributes: T
-
-  constructor(attributes: T) {
-    this.attributes = attributes
-  }
+  abstract get tableName(): string
+  protected get uniqueKeys(): string[] { return [] }
+  
+  protected constructor(protected attributes: T) {}
 
   protected static async getDb(): Promise<Database> {
     if (!this.db) {
@@ -37,159 +30,185 @@ abstract class Model<T extends ModelAttributes> {
     return this.db
   }
 
-  protected buildWhereClause(where: { [key: string]: any }): { query: string; params: any[] } {
+  protected buildWhereClause(where: { [key: string]: any }): { query: string; values: any[] } {
     const conditions: string[] = []
-    const params: any[] = []
+    const values: any[] = []
     
     Object.entries(where).forEach(([key, value]) => {
       conditions.push(`${key} = ?`)
-      params.push(value)
+      values.push(value)
     })
     
     return {
       query: conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '',
-      params
+      values
     }
   }
 
-  async save(): Promise<this> {
-    const db = await (this.constructor as typeof Model).getDb()
-    const { id, ...attrs } = this.attributes
-    
-    if (id) {
-      // Update
-      const setClauses = Object.keys(attrs).map(key => `${key} = ?`).join(', ')
-      const values = [...Object.values(attrs), id]
+  async save(): Promise<number> {
+    try {
+      const db = await Model.getDb()
+      const { id, created_at, ...attrs } = this.attributes
       
-      await db.execute(
-        `UPDATE ${this.tableName} SET ${setClauses} WHERE id = ?`,
-        values
-      )
-    } else {
-      // Insert
-      const columns = Object.keys(attrs).join(', ')
-      const placeholders = Object.keys(attrs).map(() => '?').join(', ')
+      // Check for existing record based on unique keys
+      if (this.uniqueKeys.length > 0) {
+        const whereConditions: { [key: string]: any } = {}
+        this.uniqueKeys.forEach(key => {
+          if (key in attrs) {
+            whereConditions[key] = attrs[key]
+          }
+        })
+        
+        if (Object.keys(whereConditions).length > 0) {
+          const { query, values } = this.buildWhereClause(whereConditions)
+          const existing = await db.select(
+            `SELECT id FROM ${this.tableName}${query}`,
+            values
+          )
+          
+          if (existing.length > 0) {
+            // Update existing record
+            const setClauses = Object.keys(attrs)
+              .filter(key => !this.uniqueKeys.includes(key))
+              .map(key => `${key} = ?`)
+              .join(', ')
+            const values = [
+              ...Object.entries(attrs)
+                .filter(([key]) => !this.uniqueKeys.includes(key))
+                .map(([, value]) => value),
+              existing[0].id
+            ]
+            
+            const result = await db.execute(
+              `UPDATE ${this.tableName} SET ${setClauses} WHERE id = ?`,
+              values
+            )
+            this.attributes.id = existing[0].id
+            return existing[0].id
+          }
+        }
+      }
+      
+      // Insert new record if no existing record found
+      const columns = Object.keys(attrs)
+      const placeholders = columns.map(() => '?').join(', ')
       const values = Object.values(attrs)
       
       const result = await db.execute(
-        `INSERT INTO ${this.tableName} (${columns}) VALUES (${placeholders})`,
+        `INSERT INTO ${this.tableName} (${columns.join(', ')}) VALUES (${placeholders})`,
         values
       )
-      this.attributes.id = result.lastInsertId
+      const newId = result.lastInsertId
+      this.attributes.id = newId
+      return newId
+    } catch (error) {
+      console.error(`Error saving ${this.tableName}:`, error)
+      throw new Error(`Failed to save ${this.tableName}`)
     }
-    
-    return this
   }
 
-  async delete(): Promise<void> {
-    if (!this.attributes.id) throw new Error('Cannot delete unsaved model')
-    
-    const db = await (this.constructor as typeof Model).getDb()
-    await db.execute(
-      `DELETE FROM ${this.tableName} WHERE id = ?`,
-      [this.attributes.id]
-    )
+  async delete(): Promise<boolean> {
+    try {
+      if (!this.attributes.id) {
+        throw new Error('Cannot delete unsaved model')
+      }
+      
+      const db = await Model.getDb()
+      const result = await db.execute(
+        `DELETE FROM ${this.tableName} WHERE id = ?`,
+        [this.attributes.id]
+      )
+      return result.rowsAffected > 0
+    } catch (error) {
+      console.error(`Error deleting ${this.tableName}:`, error)
+      throw new Error(`Failed to delete ${this.tableName}`)
+    }
   }
 
-  static async find<M extends Model<any>>(
-    this: Constructor<M>,
+  static async findById<M extends Model<any>>(
+    this: new (attrs: any) => M,
+    id: number
+  ): Promise<M | null> {
+    try {
+      const instance = new this({})
+      const db = await Model.getDb()
+      const results = await db.select(
+        `SELECT * FROM ${instance.tableName} WHERE id = ?`,
+        [id]
+      )
+      return results[0] ? new this(results[0]) : null
+    } catch (error) {
+      console.error(`Error finding ${this.name} by ID:`, error)
+      throw new Error(`Failed to find ${this.name}`)
+    }
+  }
+
+  static async findAll<M extends Model<any>>(
+    this: new (attrs: any) => M,
     options: QueryOptions = {}
   ): Promise<M[]> {
-    const db = await Model.getDb()
-    const instance = new this({})
-    
-    let query = `SELECT * FROM ${instance.tableName}`
-    const params: any[] = []
+    try {
+      const instance = new this({})
+      const db = await Model.getDb()
+      
+      let query = `SELECT * FROM ${instance.tableName}`
+      let values: any[] = []
 
-    if (options.where) {
-      const whereClause = instance.buildWhereClause(options.where)
-      query += whereClause.query
-      params.push(...whereClause.params)
+      if (options.where) {
+        const whereClause = instance.buildWhereClause(options.where)
+        query += whereClause.query
+        values = whereClause.values
+      }
+
+      if (options.orderBy) {
+        query += ` ORDER BY ${options.orderBy.column} ${options.orderBy.direction}`
+      }
+
+      if (options.limit) {
+        query += ` LIMIT ${options.limit}`
+      }
+
+      const results = await db.select(query, values)
+      return results.map(result => new this(result))
+    } catch (error) {
+      console.error(`Error finding all ${this.name}:`, error)
+      throw new Error(`Failed to find ${this.name} records`)
     }
-
-    if (options.orderBy) {
-      query += ` ORDER BY ${options.orderBy.column} ${options.orderBy.direction}`
-    }
-
-    if (options.limit) {
-      query += ` LIMIT ${options.limit}`
-    }
-
-    const results = await db.select<Record<string, any>[]>(query, params)
-    return results.map((result: Record<string, any>) => new this(result))
-  }
-
-  static async findOne<M extends Model<any>>(
-    this: Constructor<M>,
-    options: QueryOptions = {}
-  ): Promise<M | null> {
-    const results = await this.find({ ...options, limit: 1 })
-    return results[0] || null
   }
 }
 
-// Screenshot Model
-interface ScreenshotAttributes extends ModelAttributes {
+// Screenshot Model implementation
+interface Screenshot extends BaseModel {
   name: string
   image: string
-  created_at: string
 }
 
-class Screenshot extends Model<ScreenshotAttributes> {
-  tableName = 'screenshots'
+export class Screenshots extends Model<Screenshot> {
+  get tableName(): string {
+    return 'screenshots'
+  }
 
-  static async latest(): Promise<Screenshot | null> {
-    return this.findOne({
-      orderBy: { column: 'created_at', direction: 'DESC' }
-    })
+  constructor(attributes: Partial<Screenshot> = {}) {
+    super(attributes as Screenshot)
   }
 }
 
-// Settings Model
-interface SettingsAttributes extends ModelAttributes {
+// Settings Model implementation
+interface Setting extends BaseModel {
   key: string
   value: string
-  created_at: string
-  updated_at: string
 }
 
-class Settings extends Model<SettingsAttributes> {
-  tableName = 'settings'
-
-  static async get(key: string): Promise<string | null> {
-    const setting = await this.findOne({
-      where: { key }
-    })
-    return setting?.attributes.value || null
+export class Settings extends Model<Setting> {
+  get tableName(): string {
+    return 'settings'
   }
 
-  static async set(key: string, value: string): Promise<Settings> {
-    const now = new Date().toISOString()
-    const existing = await this.findOne({ where: { key } })
-
-    if (existing) {
-      existing.attributes.value = value
-      existing.attributes.updated_at = now
-      return existing.save()
-    }
-
-    const setting = new Settings({
-      key,
-      value,
-      created_at: now,
-      updated_at: now
-    })
-    return setting.save()
+  protected get uniqueKeys(): string[] {
+    return ['key']
   }
-}
 
-// Export database instance and models
-export { 
-  Screenshot, 
-  Settings, 
-  Model, 
-  type ModelAttributes, 
-  type QueryOptions, 
-  type ScreenshotAttributes, 
-  type SettingsAttributes 
+  constructor(attributes: Partial<Setting> = {}) {
+    super(attributes as Setting)
+  }
 }

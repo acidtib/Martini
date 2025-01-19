@@ -18,7 +18,8 @@ pub fn run() {
             description: "create settings table",
             sql: r#"
                     CREATE TABLE IF NOT EXISTS settings (
-                        key TEXT PRIMARY KEY,
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        key TEXT NOT NULL,
                         value TEXT NOT NULL
                     );
                 "#,
@@ -43,7 +44,7 @@ pub fn run() {
             sql: r#"
                     CREATE TABLE IF NOT EXISTS screenshots (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT,
+                        name TEXT NOT NULL,
                         image BLOB NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );

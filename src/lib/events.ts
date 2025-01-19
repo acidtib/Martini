@@ -1,6 +1,6 @@
 import { listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { Screenshot } from './database'
+import { Screenshots } from './database'
 
 // Define the type for the screenshot payload
 interface ScreenshotPayload {
@@ -38,7 +38,7 @@ export const initializeEventListeners = () => {
 
         try {
             const { image, name = 'screenshot.png' } = event.payload
-            const screenshot = new Screenshot({ name, image, created_at: new Date().toISOString() })
+            const screenshot = new Screenshots({ name, image })
             await screenshot.save()
 
             console.log('Screenshot saved to database');
@@ -75,7 +75,7 @@ export const initializeEventListeners = () => {
         } catch (error) {
             console.error('Error saving screenshot:', error);
         }
-    }, 1000); // 500ms debounce time
+    }, 1000); // 1000ms debounce time
 
     // when shortcut is pressed and screenshot is taken
     listen('new-screenshot', handleScreenshot);

@@ -1,13 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Screenshot } from '../lib/database'
-import type { ScreenshotAttributes } from '../lib/database'
+import { Screenshots } from '../lib/database'
 
-const latestScreenshot = ref<ScreenshotAttributes | null>(null)
+interface Screenshot {
+  id: number
+  name: string
+  image: string
+  created_at: string
+}
+
+const latestScreenshot = ref<Screenshot | null>(null)
 
 const loadLatestScreenshot = async () => {
   try {
-    latestScreenshot.value = (await Screenshot.latest())?.attributes || null
+    const screenshots = await Screenshots.findAll({
+      orderBy: { column: 'created_at', direction: 'DESC' },
+      limit: 1
+    })
+    latestScreenshot.value = screenshots[0]?.attributes || null
   } catch (error) {
     console.error('Error loading latest screenshot:', error)
   }
@@ -37,6 +47,9 @@ onMounted(() => {
 <style scoped>
 .screenshot-viewer {
   padding: 1rem;
+  height: 100vh;
+  overflow-y: auto;
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .screenshot-container {
@@ -46,23 +59,28 @@ onMounted(() => {
 .screenshot-container img {
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .screenshot-info {
   margin-top: 1rem;
   padding: 1rem;
-  background-color: #f5f5f5;
-  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  color: #9ca3af;
+}
+
+.screenshot-info p {
+  margin: 0.5rem 0;
 }
 
 .no-screenshot {
   margin-top: 1rem;
   padding: 2rem;
   text-align: center;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  color: #666;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  color: #9ca3af;
 }
 </style>
