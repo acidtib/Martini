@@ -30,7 +30,10 @@ pub fn run() {
             sql: r#"
                     INSERT INTO settings (key, value) VALUES
                         ('bootstrapped', 'false'),
-                        ('installed_on', CURRENT_TIMESTAMP);
+                        ('installed_on', CURRENT_TIMESTAMP),
+                        ('system_os', '-'),
+                        ('system_cpu', '-'),
+                        ('system_memory', '-');
                 "#,
             kind: MigrationKind::Up,
         },
@@ -65,6 +68,7 @@ pub fn run() {
                 }
             } _ => {} 
         })
+        .plugin(tauri_plugin_system_info::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:app.db", migrations)
