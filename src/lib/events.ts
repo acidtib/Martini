@@ -12,6 +12,8 @@ interface ScreenshotEvent {
     payload: ScreenshotPayload;
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // Debounce function to prevent multiple rapid executions
 function debounce<T extends (...args: any[]) => any>(
     func: T,
@@ -47,8 +49,10 @@ export const initializeEventListeners = () => {
             let viewerWindow = await WebviewWindow.getByLabel('screenshot-viewer');
                 
             if (viewerWindow) {
-                // Close existing window
-                await viewerWindow.close();
+                // Destroy existing window
+                await viewerWindow.destroy();
+                // Wait for window to be fully destroyed
+                await sleep(300);
             }
 
             viewerWindow = new WebviewWindow('screenshot-viewer', {
