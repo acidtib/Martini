@@ -1,6 +1,8 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
+use std::error::Error;
+use anyhow::anyhow;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -78,8 +80,7 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            shortcuts::register_shortcuts(app)?;
-            
+            shortcuts::register_shortcuts(app).map_err(|e| anyhow!("Failed to register shortcuts: {}", e))?;
             Ok(())
         })
         .plugin(tauri_plugin_process::init())
