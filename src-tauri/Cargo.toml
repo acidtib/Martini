@@ -34,6 +34,7 @@ rten = "=0.13.1"
 rten-tensor = "=0.13.1"
 rten-imageproc = "=0.13.1"
 chrono = "0.4"
+tokio = { version = "1.36", features = ["rt", "rt-multi-thread", "macros"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-global-shortcut = "2"
