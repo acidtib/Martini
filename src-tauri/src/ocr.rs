@@ -9,7 +9,7 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use image::{self, ImageBuffer, Rgb};
 use tauri::{AppHandle, Manager, path::BaseDirectory};
 
-pub fn perform_ocr(app: &AppHandle, base64_image: &str) -> Result<(), Box<dyn Error>> {
+pub fn perform_ocr(app: &AppHandle, base64_image: &str) -> Result<Vec<String>, Box<dyn Error>> {
     let detection_model_path = app.path().resolve("resources/ai_models/text-detection.rten", BaseDirectory::Resource)?;
     let rec_model_path = app.path().resolve("resources/ai_models/text-recognition.rten", BaseDirectory::Resource)?;
     println!("Detection model path: {}", detection_model_path.display());
@@ -35,13 +35,15 @@ pub fn perform_ocr(app: &AppHandle, base64_image: &str) -> Result<(), Box<dyn Er
     let line_rects = engine.find_text_lines(&ocr_input, &word_rects);
     let line_texts = engine.recognize_text(&ocr_input, &line_rects)?;
 
+    let mut results = Vec::new();
     for line in line_texts
         .iter()
         .flatten()
         .filter(|l| l.to_string().len() > 1)
     {
         println!("{}", line);
+        results.push(line.to_string());
     }
 
-    Ok(())
+    Ok(results)
 }
