@@ -1,5 +1,4 @@
 use image::{GenericImageView, ImageError};
-use image::ImageFormat;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use std::io::Cursor;
 use tauri::{AppHandle, Runtime, Emitter};
