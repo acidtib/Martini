@@ -100,14 +100,15 @@ fn process_crop(base64_image: &str, region: CropRegion) -> Result<String, ImageE
     // Crop the image
     let cropped = img.crop(x, y, crop_width, crop_height);
     
-    // Save the cropped image as PNG for viewing
+    // Save the cropped image as JPEG for viewing
     // Create debug directory if it doesn't exist
     std::fs::create_dir_all("debug").map_err(|e| ImageError::IoError(e))?;
-    let filename = format!("debug/{:?}.png", region);
+    let filename = format!("debug/{:?}.jpg", region);
     cropped.save(&filename)?;
 
     let mut buffer = Cursor::new(Vec::new());
-    cropped.write_to(&mut buffer, ImageFormat::Png)?;
+    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buffer, 85);
+    encoder.encode_image(&cropped)?;
     let encoded = BASE64.encode(buffer.into_inner());
     
     Ok(encoded)

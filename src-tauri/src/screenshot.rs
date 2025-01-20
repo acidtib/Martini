@@ -14,31 +14,29 @@ pub struct WindowInfo {
     pub is_maximized: bool,
 }
 
-/// Captures a window screenshot by partial title match and returns the image data as PNG
+/// Captures a window screenshot by partial title match and returns the image data as JPEG
 pub fn capture_window(window_titles: &[&str]) -> Result<Vec<u8>, Box<dyn Error + Send + Sync>> {
     let window = find_window(window_titles)?;
 
     // Capture the window image
     let image = window.capture_image()?;
 
-    // Convert to PNG
-    let mut png_data = Vec::new();
-    image.write_to(
-        &mut std::io::Cursor::new(&mut png_data),
-        image::ImageFormat::Png,
-    )?;
+    // Convert to JPEG with quality settings
+    let mut jpeg_data = Vec::new();
+    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_data, 85);
+    encoder.encode_image(&image)?;
 
-    Ok(png_data)
+    Ok(jpeg_data)
 }
 
 /// Captures a window screenshot and saves it to a file
 pub fn capture_and_save_window(window_titles: &[&str]) -> Result<String, Box<dyn Error + Send + Sync>> {
-    let png_data = capture_window(window_titles)?;
+    let jpeg_data = capture_window(window_titles)?;
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-    let filename = format!("screenshot_{}.png", timestamp);
+    let filename = format!("screenshot_{}.jpg", timestamp);
 
     // Save the image
-    std::fs::write(&filename, png_data)?;
+    std::fs::write(&filename, jpeg_data)?;
 
     Ok(filename)
 }
@@ -83,10 +81,10 @@ mod tests {
     #[test]
     fn test_capture_window() {
         match capture_window(&["test window"]) {
-            Ok(png_data) => {
-                fs::write("test_capture.png", png_data).unwrap();
-                assert!(fs::metadata("test_capture.png").unwrap().len() > 0);
-                fs::remove_file("test_capture.png").unwrap();
+            Ok(jpeg_data) => {
+                fs::write("test_capture.jpg", jpeg_data).unwrap();
+                assert!(fs::metadata("test_capture.jpg").unwrap().len() > 0);
+                fs::remove_file("test_capture.jpg").unwrap();
             }
             Err(e) => println!("Test skipped: {}", e),
         }

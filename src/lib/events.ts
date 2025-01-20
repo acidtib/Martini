@@ -71,7 +71,7 @@ export const initializeEventListeners = () => {
         console.log(event);
 
         try {
-            const { image, name = 'screenshot.png' } = event.payload
+            const { image, name = 'screenshot.jpg' } = event.payload
             const screenshot = new Screenshots({ name, image })
             await screenshot.save()
 
@@ -112,6 +112,7 @@ export const initializeEventListeners = () => {
             console.error('Error saving screenshot:', error);
         }
     }, 1000); // 1000ms debounce time
+
 
     // Open screenshot viewer
     listen('open-screenshot-viewer', handleOpenScreenshotViewer)
