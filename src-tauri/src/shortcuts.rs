@@ -18,7 +18,7 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn std::error::Error
                 .with_handler(move |app_handle, shortcut, event| {
                     if shortcut == &ctrl_shift_m && event.state() == ShortcutState::Pressed {
                         println!("Taking screenshot...");
-                        match screenshot::capture_window(&["notepad", "hunt", "Hunt: Showdown"]) {
+                        match screenshot::capture_window(&[".jpg", "notepad", "hunt", "Hunt: Showdown"]) {
                             Ok(image_data) => {
                                 println!("Screenshot captured, size: {} bytes", image_data.len());
 

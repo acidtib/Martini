@@ -26,7 +26,7 @@ fn get_crop_config(region: CropRegion) -> CropConfig {
     CropRegion::HuntMissionSummary => CropConfig {
       x: 130,
       y: 95,
-      width: 500,
+      width: 400,
       height: 95,
     },
 
