@@ -34,6 +34,38 @@ function debounce<T extends (...args: any[]) => any>(
 }
 
 export const initializeEventListeners = () => {
+    const handleOpenScreenshotViewer = debounce(async () => {
+        // Try to get existing window first
+        let viewerWindow = await WebviewWindow.getByLabel('screenshot-viewer');
+                
+        if (viewerWindow) {
+            // Destroy existing window
+            await viewerWindow.destroy();
+            // Wait for window to be fully destroyed
+            await sleep(500);
+        }
+
+        viewerWindow = new WebviewWindow('screenshot-viewer', {
+            title: 'Screenshot Viewer - Martini',
+            url: '/screenshot',
+            width: 920,
+            height: 580,
+            minWidth: 920,
+            minHeight: 580,
+            resizable: true,
+            center: true
+        });
+
+        viewerWindow.once('tauri://created', async () => {
+            console.log('Viewer window created successfully');
+            await viewerWindow.setFocus();
+        });
+
+        viewerWindow.once('tauri://error', (e) => {
+            console.error('Error creating viewerWindow:', e);
+        });
+    }, 1000);
+
     // Create a debounced version of the screenshot handler
     const handleScreenshot = debounce(async (event: ScreenshotEvent) => {
         console.log(event);
@@ -81,6 +113,9 @@ export const initializeEventListeners = () => {
         }
     }, 1000); // 1000ms debounce time
 
-    // when shortcut is pressed and screenshot is taken
+    // Open screenshot viewer
+    listen('open-screenshot-viewer', handleOpenScreenshotViewer)
+
+    // Handle new screenshot
     listen('new-screenshot', handleScreenshot);
 }
