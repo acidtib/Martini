@@ -1,14 +1,14 @@
-use crate::screenshot;
 use crate::crop;
 use crate::ocr;
+use crate::screenshot;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use serde_json;
+use std::error::Error;
 use tauri::App;
 use tauri::Emitter;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use tokio::runtime::Runtime;
-use std::error::Error;
 
 pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sync>> {
     #[cfg(desktop)]
@@ -21,9 +21,9 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                 .with_handler(move |app_handle, shortcut, event| {
                     if shortcut == &ctrl_shift_m && event.state() == ShortcutState::Pressed {
                         println!("Taking screenshot...");
-                        
+
                         let handle = app_handle.clone();
-                        
+
                         rt.spawn(async move {
                             match screenshot::capture_window(&[".jpg", "notepad", "hunt", "Hunt: Showdown"]) {
                                 Ok(image_data) => {
