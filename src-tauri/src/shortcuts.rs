@@ -29,9 +29,10 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                                 Ok(image_data) => {
                                     println!("Screenshot captured, size: {} bytes", image_data.len());
 
-                                    // Convert image data to base64 first
+                                    // Convert image data to base64 and estimate size in MB
                                     let base64_image = STANDARD.encode(&image_data);
-                                    println!("Base64 image size: {} chars", base64_image.len());
+                                    let estimated_size_mb = base64_image.len() as f64 / (1024.0 * 1024.0);
+                                    println!("Estimated image size: {:.2} MB", estimated_size_mb);
 
                                     // Call the crop_image function with base64 image using the HuntMissionSummary crop region
                                     match crop::crop_image(handle.clone(), base64_image.clone(), crop::CropRegion::HuntMissionSummary).await {
