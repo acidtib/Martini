@@ -52,7 +52,7 @@ export const initializeEventListeners = () => {
                 // Destroy existing window
                 await viewerWindow.destroy();
                 // Wait for window to be fully destroyed
-                await sleep(300);
+                await sleep(500);
             }
 
             viewerWindow = new WebviewWindow('screenshot-viewer', {
