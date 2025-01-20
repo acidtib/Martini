@@ -9,6 +9,7 @@ fn greet(name: &str) -> String {
 
 pub mod screenshot;
 pub mod shortcuts;
+pub mod crop;
 pub mod ocr;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
