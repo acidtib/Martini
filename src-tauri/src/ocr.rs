@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::sync::Arc;
 
 use ocrs::{ImageSource, OcrEngine, OcrEngineParams};
 use rten::Model;
@@ -7,7 +6,7 @@ use rten::Model;
 use rten_tensor::prelude::*;
 
 use base64::{Engine, engine::general_purpose::STANDARD};
-use image::{self, ImageBuffer, Rgb};
+use image::{self};
 use tauri::{AppHandle, Manager, path::BaseDirectory, Runtime, Emitter};
 
 #[tauri::command(async)]

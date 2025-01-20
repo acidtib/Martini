@@ -1,7 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
-use std::error::Error;
 use anyhow::anyhow;
 
 #[tauri::command]

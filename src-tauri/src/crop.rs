@@ -1,11 +1,8 @@
-use image::{GenericImageView, ImageBuffer, ImageError, Rgb};
+use image::{GenericImageView, ImageError};
 use image::ImageFormat;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use std::io::Cursor;
-use std::fs;
-use std::path::Path;
-use chrono;
-use tauri::{AppHandle, Manager, Runtime, Emitter};
+use tauri::{AppHandle, Runtime, Emitter};
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum CropRegion {
