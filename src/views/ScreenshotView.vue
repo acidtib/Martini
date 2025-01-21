@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { listen } from '@tauri-apps/api/event';
 import { Screenshots } from '../lib/database'
+
+listen('refresh-viewer', () => {
+  console.log('Refreshing viewer window');
+  loadLatestScreenshot();
+});
 
 interface Screenshot {
   id: number
