@@ -42,6 +42,7 @@ onMounted(() => {
     <div v-if="latestScreenshot" class="screenshot-container">
       <img :src="`data:image/jpeg;base64,${latestScreenshot.image}`" :alt="latestScreenshot.name" />
       <div class="screenshot-info">
+        <p>ID: {{ latestScreenshot.id }}</p>
         <p>Name: {{ latestScreenshot.name }}</p>
         <p>Recognized: {{ latestScreenshot.recognized }}</p>
         <p>OCR: {{ latestScreenshot.ocr }}</p>
