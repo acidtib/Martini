@@ -38,24 +38,27 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                                     println!("Estimated image size: {:.2} MB", estimated_size_mb);                                  
 
                                     // Save screenshot to database first
-                                    let screenshot_id = if let Some(db) = &app_handle.state::<AppState>().inner().clone().db {
-                                        if let Ok(mut conn) = db.lock() {
-                                            match crate::db::save_screenshot(&mut conn, base64_image.clone()) {
-                                                Ok(id) => {
-                                                    println!("Screenshot saved to database with id: {}", id);
-                                                    Some(id)
+                                    let screenshot_id = {
+                                        let state = app_handle.state::<AppState>();
+                                        if let Some(db) = state.inner().db.as_ref() {
+                                            if let Ok(mut conn) = db.lock() {
+                                                match crate::db::save_screenshot(&mut conn, base64_image.clone()) {
+                                                    Ok(id) => {
+                                                        println!("Screenshot saved to database with id: {}", id);
+                                                        Some(id)
+                                                    }
+                                                    Err(e) => {
+                                                        println!("Error saving screenshot: {:?}", e);
+                                                        None
+                                                    }
                                                 }
-                                                Err(e) => {
-                                                    println!("Error saving screenshot: {:?}", e);
-                                                    None
-                                                }
+                                            } else {
+                                                println!("Could not lock database connection");
+                                                None
                                             }
                                         } else {
-                                            println!("Could not lock database connection");
                                             None
                                         }
-                                    } else {
-                                        None
                                     };
 
                                     tauri::async_runtime::spawn(async move {
