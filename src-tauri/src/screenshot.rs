@@ -29,8 +29,8 @@ pub fn capture_window(window_titles: &[&str]) -> Result<Vec<u8>, Box<dyn Error +
 
     // Save the screenshot as JPEG
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-    std::fs::create_dir_all("debug").map_err(|e| ImageError::IoError(e))?;
-    let filename = format!("debug/screenshot_{}.jpg", timestamp);
+    std::fs::create_dir_all("../debug_images").map_err(|e| ImageError::IoError(e))?;
+    let filename = format!("../debug_images/screenshot_{}.jpg", timestamp);
     std::fs::write(&filename, &jpeg_data)?;
 
     Ok(jpeg_data)

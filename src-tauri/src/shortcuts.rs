@@ -25,25 +25,30 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                         let handle = app_handle.clone();
 
                         rt.spawn(async move {
+                            let start_time = std::time::Instant::now();
                             match screenshot::capture_window(&[".jpg", "notepad", "hunt", "Hunt: Showdown"]) {
                                 Ok(image_data) => {
-                                    println!("Screenshot captured, size: {} bytes", image_data.len());
+                                    let screenshot_time = start_time.elapsed();
+                                    println!("Screenshot captured in {:?}, size: {} bytes", screenshot_time, image_data.len());
 
-                                    // Convert image data to base64 and estimate size in MB
                                     let base64_image = STANDARD.encode(&image_data);
                                     let estimated_size_mb = base64_image.len() as f64 / (1024.0 * 1024.0);
                                     println!("Estimated image size: {:.2} MB", estimated_size_mb);
 
-                                    // Call the crop_image function with base64 image using the HuntMissionSummary crop region
+                                    let crop_start = std::time::Instant::now();
                                     match crop::crop_image(handle.clone(), base64_image.clone(), crop::CropRegion::HuntMissionSummary).await {
                                         Ok(cropped_image) => {
-                                            // Perform OCR on the cropped image
+                                            let crop_time = crop_start.elapsed();
+                                            println!("Image cropped in {:?}", crop_time);
+
+                                            let ocr_start = std::time::Instant::now();
                                             match ocr::perform_ocr(handle.clone(), cropped_image).await {
                                                 Ok(text_results) => {
-                                                    // Check if any of the lines contain "Mission Summary"
+                                                    let ocr_time = ocr_start.elapsed();
+                                                    println!("OCR completed in {:?}", ocr_time);
+
                                                     if text_results.iter().any(|line| line.contains("Mission Summary")) {
                                                         println!("Mission Summary detected, saving screenshot");
-                                                        // Tell the main window to save the screenshot
                                                         if let Err(e) = handle.emit("new-screenshot", serde_json::json!({
                                                             "image": base64_image,
                                                             "text": text_results
@@ -62,6 +67,7 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                                 }
                                 Err(e) => println!("Screenshot error: {}", e),
                             }
+                            println!("Total processing time: {:?}", start_time.elapsed());
                         });
                     }
                 })

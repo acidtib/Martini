@@ -22,7 +22,7 @@ fn get_crop_config(region: CropRegion) -> CropConfig {
         CropRegion::HuntMissionSummary => CropConfig {
             x: 130,
             y: 95,
-            width: 400,
+            width: 300,
             height: 95,
         },
 
@@ -101,8 +101,8 @@ fn process_crop(base64_image: &str, region: CropRegion) -> Result<String, ImageE
     
     // Save the cropped image as JPEG for viewing
     // Create debug directory if it doesn't exist
-    std::fs::create_dir_all("debug").map_err(|e| ImageError::IoError(e))?;
-    let filename = format!("debug/{:?}.jpg", region);
+    std::fs::create_dir_all("../debug_images").map_err(|e| ImageError::IoError(e))?;
+    let filename = format!("../debug_images/{:?}.jpg", region);
     cropped.save(&filename)?;
 
     let mut buffer = Cursor::new(Vec::new());
