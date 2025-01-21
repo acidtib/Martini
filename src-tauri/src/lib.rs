@@ -2,12 +2,19 @@
 use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
 use anyhow::anyhow;
+use std::sync::Mutex;
+
+#[derive(Default)]
+pub struct AppState {
+    pub db: Option<Mutex<db::DbConnection>>,
+}
 
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+pub mod db;
 pub mod screenshot;
 pub mod shortcuts;
 pub mod crop;
@@ -81,6 +88,14 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            // Initialize the database connection
+            let conn = db::init(&app.handle());
+            
+            // Store the connection in the app state
+            app.manage(AppState {
+                db: Some(Mutex::new(conn)),
+            });
+            
             shortcuts::register_shortcuts(app).map_err(|e| anyhow!("Failed to register shortcuts: {}", e))?;
             Ok(())
         })
