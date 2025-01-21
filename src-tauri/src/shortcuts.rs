@@ -47,8 +47,37 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                                                     Ok(id) => {
                                                         println!("Screenshot saved to database with id: {}", id);
 
-                                                        // emit the event open-screenshot-viewer
+                                                        // open the screenshot viewer window
                                                         let _ = handle.emit("open-screenshot-viewer", ());
+
+                                                        // Crop the screenshot for Hunt: Showdown mission summary
+                                                        let crop_start = std::time::Instant::now();
+                                                        match crop::crop_image(handle.clone(), base64_image, crop::CropRegion::HuntMissionSummary).await {
+                                                            Ok(cropped_image) => {
+                                                                let crop_time = crop_start.elapsed();
+                                                                println!("Image cropped in {:?}", crop_time);
+                                                                println!("Screenshot cropped successfully");
+
+                                                                let ocr_start = std::time::Instant::now();
+                                                                match ocr::perform_ocr(handle.clone(), cropped_image).await {
+                                                                    Ok(text_results) => {
+                                                                        let ocr_time = ocr_start.elapsed();
+                                                                        println!("OCR completed in {:?}", ocr_time);
+
+                                                                        if text_results.iter().any(|line| line.contains("Mission Summary")) {
+                                                                            println!("Mission Summary detected");
+                                                                            
+                                                                        } else {
+                                                                            println!("No Mission Summary found in text results");
+                                                                        }
+                                                                    }
+                                                                    Err(e) => println!("OCR error: {}", e),
+                                                                }
+                                                            }
+                                                            Err(e) => {
+                                                                println!("Error cropping screenshot: {}", e);
+                                                            }
+                                                        }
                                                     }
                                                     Err(e) => {
                                                         eprintln!("Error saving screenshot to database: {}", e);
@@ -56,36 +85,6 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                                                 }
                                             }
                                         }
-
-                                        // let crop_start = std::time::Instant::now();
-                                        // match crop::crop_image(handle.clone(), base64_image.clone(), crop::CropRegion::HuntMissionSummary).await {
-                                        //     Ok(cropped_image) => {
-                                        //         let crop_time = crop_start.elapsed();
-                                        //         println!("Image cropped in {:?}", crop_time);
-
-                                        //         let ocr_start = std::time::Instant::now();
-                                        //         match ocr::perform_ocr(handle.clone(), cropped_image).await {
-                                        //             Ok(text_results) => {
-                                        //                 let ocr_time = ocr_start.elapsed();
-                                        //                 println!("OCR completed in {:?}", ocr_time);
-
-                                        //                 if text_results.iter().any(|line| line.contains("Mission Summary")) {
-                                        //                     println!("Mission Summary detected");
-                                        //                     if let Err(e) = handle.emit("new-screenshot", serde_json::json!({
-                                        //                         "image": base64_image,
-                                        //                         "text": text_results
-                                        //                     })) {
-                                        //                         println!("Failed to emit new-screenshot event: {}", e);
-                                        //                     }
-                                        //                 } else {
-                                        //                     println!("No Mission Summary found in text results");
-                                        //                 }
-                                        //             }
-                                        //             Err(e) => println!("OCR error: {}", e),
-                                        //         }
-                                        //     }
-                                        //     Err(e) => println!("Crop error: {}", e),
-                                        // }
                                     }
                                     Err(e) => println!("Screenshot error: {}", e),
                                 }
