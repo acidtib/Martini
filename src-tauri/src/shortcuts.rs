@@ -9,7 +9,6 @@ use tauri::App;
 use tauri::Manager;
 use tauri::Emitter;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
-use std::sync::Arc;
 
 pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sync>> {
     #[cfg(desktop)]
@@ -17,18 +16,16 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
         let ctrl_shift_m = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyM);
         
         let app_handle = app.handle().clone();
+        let app_handle_clone = app_handle.clone();
         
-        app.handle().plugin(
+        app_handle.plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |_shortcut_handle, shortcut, event| {
                     if shortcut == &ctrl_shift_m && event.state() == ShortcutState::Pressed {
                         println!("Taking screenshot...");
 
-                        let state = app_handle.state::<AppState>();
-                        let handle = app_handle.clone();
-                        let state = state;
-
-                        tokio::spawn(async move {
+                        let app_handle = app_handle_clone.clone();
+                        tauri::async_runtime::spawn(async move {
                             let start_time = std::time::Instant::now();
                             match screenshot::capture_window(&[".jpg", "notepad", "hunt", "Hunt: Showdown"]) {
                                 Ok(image_data) => {
@@ -41,7 +38,7 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                                     println!("Estimated image size: {:.2} MB", estimated_size_mb);                                  
 
                                     // Save screenshot to database first
-                                    let screenshot_id = if let Some(db) = &state.db {
+                                    let screenshot_id = if let Some(db) = &app_handle.state::<AppState>().inner().clone().db {
                                         if let Ok(mut conn) = db.lock() {
                                             match crate::db::save_screenshot(&mut conn, base64_image.clone()) {
                                                 Ok(id) => {
@@ -61,20 +58,20 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                                         None
                                     };
 
-                                    tokio::spawn(async move {
+                                    tauri::async_runtime::spawn(async move {
                                         // open the screenshot viewer window
-                                        let _ = handle.emit("open-screenshot-viewer", ());
+                                        let _ = app_handle.emit("open-screenshot-viewer", ());
 
                                         // Crop the screenshot for Hunt: Showdown mission summary
                                         let crop_start = std::time::Instant::now();
-                                        match crop::crop_image(handle.clone(), base64_image, crop::CropRegion::HuntMissionSummary).await {
+                                        match crop::crop_image(app_handle.clone(), base64_image, crop::CropRegion::HuntMissionSummary).await {
                                             Ok(cropped_image) => {
                                                 let crop_time = crop_start.elapsed();
                                                 println!("Image cropped in {:?}", crop_time);
                                                 println!("Screenshot cropped successfully");
 
                                                 let ocr_start = std::time::Instant::now();
-                                                match ocr::perform_ocr(handle.clone(), cropped_image).await {
+                                                match ocr::perform_ocr(app_handle.clone(), cropped_image).await {
                                                     Ok(text_results) => {
                                                         let ocr_time = ocr_start.elapsed();
                                                         println!("OCR completed in {:?}", ocr_time);
