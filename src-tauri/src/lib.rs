@@ -49,6 +49,7 @@ pub fn run() {
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name TEXT NOT NULL,
                         image BLOB NOT NULL,
+                        ocrd BOOLEAN DEFAULT 0,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
                 "#,
