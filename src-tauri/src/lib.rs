@@ -15,6 +15,7 @@ fn greet(name: &str) -> String {
 }
 
 pub mod db;
+pub mod models;
 pub mod screenshot;
 pub mod shortcuts;
 pub mod crop;
@@ -55,7 +56,7 @@ pub fn run() {
                     CREATE TABLE IF NOT EXISTS screenshots (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name TEXT NOT NULL,
-                        image BLOB NOT NULL,
+                        image TEXT NOT NULL,
                         recognized BOOLEAN DEFAULT 0,
                         ocr BOOLEAN DEFAULT 0,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
