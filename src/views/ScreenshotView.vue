@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { listen } from '@tauri-apps/api/event';
 import { Screenshots } from '../lib/database'
 
-listen('refresh-viewer', () => {
+listen('refresh-screenshot-viewer', () => {
   console.log('Refreshing viewer window');
   loadLatestScreenshot();
 });
@@ -12,6 +12,8 @@ interface Screenshot {
   id: number
   name: string
   image: string
+  recognized: boolean
+  ocr: boolean
   created_at: string
 }
 
@@ -41,6 +43,8 @@ onMounted(() => {
       <img :src="`data:image/jpeg;base64,${latestScreenshot.image}`" :alt="latestScreenshot.name" />
       <div class="screenshot-info">
         <p>Name: {{ latestScreenshot.name }}</p>
+        <p>Recognized: {{ latestScreenshot.recognized }}</p>
+        <p>OCR: {{ latestScreenshot.ocr }}</p>
         <p>Taken: {{ new Date(latestScreenshot.created_at).toLocaleString() }}</p>
       </div>
     </div>

@@ -40,7 +40,7 @@ export const initializeEventListeners = () => {
                 
         if (viewerWindow) {
             // Emit an event to the existing window to trigger a refresh
-            await viewerWindow.emit('refresh-viewer');
+            await viewerWindow.emit('refresh-screenshot-viewer');
             await (viewerWindow as WebviewWindow).setFocus();
         } else {
             viewerWindow = new WebviewWindow('screenshot-viewer', {

@@ -181,6 +181,8 @@ abstract class Model<T extends BaseModel> {
 interface Screenshot extends BaseModel {
   name: string
   image: string
+  recognized: boolean
+  ocr: boolean
 }
 
 export class Screenshots extends Model<Screenshot> {

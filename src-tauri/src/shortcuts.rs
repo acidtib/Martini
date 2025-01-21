@@ -29,11 +29,19 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                             match screenshot::capture_window(&[".jpg", "notepad", "hunt", "Hunt: Showdown"]) {
                                 Ok(image_data) => {
                                     let screenshot_time = start_time.elapsed();
-                                    println!("Screenshot captured in {:?}, size: {} bytes", screenshot_time, image_data.len());
+                                    println!("Screenshot captured in {:?}, size: {} bytes", screenshot_time, image_data.len());                                    
 
                                     let base64_image = STANDARD.encode(&image_data);
                                     let estimated_size_mb = base64_image.len() as f64 / (1024.0 * 1024.0);
                                     println!("Estimated image size: {:.2} MB", estimated_size_mb);
+
+                                    // emit the event save-screenshot
+                                    let _ = handle.emit("save-screenshot", serde_json::json!({
+                                        "image": base64_image
+                                    }));
+
+                                    // emit the event open-screenshot-viewer
+                                    let _ = handle.emit("open-screenshot-viewer", ());
 
                                     let crop_start = std::time::Instant::now();
                                     match crop::crop_image(handle.clone(), base64_image.clone(), crop::CropRegion::HuntMissionSummary).await {
@@ -48,7 +56,7 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                                                     println!("OCR completed in {:?}", ocr_time);
 
                                                     if text_results.iter().any(|line| line.contains("Mission Summary")) {
-                                                        println!("Mission Summary detected, saving screenshot");
+                                                        println!("Mission Summary detected");
                                                         if let Err(e) = handle.emit("new-screenshot", serde_json::json!({
                                                             "image": base64_image,
                                                             "text": text_results
