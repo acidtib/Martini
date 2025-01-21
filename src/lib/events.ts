@@ -36,57 +36,13 @@ function debounce<T extends (...args: any[]) => any>(
 export const initializeEventListeners = () => {
     const handleOpenScreenshotViewer = debounce(async () => {
         // Try to get existing window first
-        let viewerWindow = await WebviewWindow.getByLabel('screenshot-viewer');
+        let viewerWindow: WebviewWindow | null = await WebviewWindow.getByLabel('screenshot-viewer');
                 
         if (viewerWindow) {
-            // Destroy existing window
-            await viewerWindow.destroy();
-            // Wait for window to be fully destroyed
-            await sleep(500);
-        }
-
-        viewerWindow = new WebviewWindow('screenshot-viewer', {
-            title: 'Screenshot Viewer - Martini',
-            url: '/screenshot',
-            width: 920,
-            height: 580,
-            minWidth: 920,
-            minHeight: 580,
-            resizable: true,
-            center: true
-        });
-
-        viewerWindow.once('tauri://created', async () => {
-            console.log('Viewer window created successfully');
-            await viewerWindow.setFocus();
-        });
-
-        viewerWindow.once('tauri://error', (e) => {
-            console.error('Error creating viewerWindow:', e);
-        });
-    }, 1000);
-
-    // Create a debounced version of the screenshot handler
-    const handleScreenshot = debounce(async (event: ScreenshotEvent) => {
-        console.log(event);
-
-        try {
-            const { image, name = 'screenshot.jpg' } = event.payload
-            const screenshot = new Screenshots({ name, image })
-            await screenshot.save()
-
-            console.log('Screenshot saved to database');
-
-            // Try to get existing window first
-            let viewerWindow = await WebviewWindow.getByLabel('screenshot-viewer');
-                
-            if (viewerWindow) {
-                // Destroy existing window
-                await viewerWindow.destroy();
-                // Wait for window to be fully destroyed
-                await sleep(500);
-            }
-
+            // Emit an event to the existing window to trigger a refresh
+            await viewerWindow.emit('refresh-viewer');
+            await (viewerWindow as WebviewWindow).setFocus();
+        } else {
             viewerWindow = new WebviewWindow('screenshot-viewer', {
                 title: 'Screenshot Viewer - Martini',
                 url: '/screenshot',
@@ -96,27 +52,32 @@ export const initializeEventListeners = () => {
                 minHeight: 580,
                 resizable: true,
                 center: true
-              });
-
-            viewerWindow.once('tauri://created', async () => {
-                console.log('Viewer window created successfully');
-                await viewerWindow.setFocus();
             });
 
-            viewerWindow.once('tauri://error', (e) => {
+            // After creating the window, we know it's not null
+            (viewerWindow).once('tauri://created', async () => {
+                console.log('Viewer window created successfully');
+                await (viewerWindow as WebviewWindow).setFocus();
+            });
+    
+            (viewerWindow).once('tauri://error', (e) => {
                 console.error('Error creating viewerWindow:', e);
             });
-            
-            console.log('Viewer window ready');
-        } catch (error) {
-            console.error('Error saving screenshot:', error);
         }
-    }, 1000); // 1000ms debounce time
+    }, 1000);
 
+    // save screenshot
+    listen('save-screenshot', async (event: ScreenshotEvent) => {
+        console.log('Saving screenshot...');
+
+        const { image, name = 'screenshot.jpg' } = event.payload
+        const screenshot = new Screenshots({ name, image })
+        await screenshot.save()
+    });
 
     // Open screenshot viewer
     listen('open-screenshot-viewer', handleOpenScreenshotViewer)
 
     // Handle new screenshot
-    listen('new-screenshot', handleScreenshot);
+    // listen('new-screenshot', handleScreenshot);
 }
