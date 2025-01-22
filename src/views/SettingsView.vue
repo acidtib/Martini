@@ -45,8 +45,8 @@ const loadSettings = async () => {
     error.value = null
     const results = await Settings.findAll()
     settings.value = results.map(setting => ({
-      key: setting.attributes.key,
-      value: setting.attributes.value
+      key: setting.getAttributes().key,
+      value: setting.getAttributes().value
     }))
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load settings'
@@ -66,7 +66,7 @@ const updateSetting = async (key: string, value: string) => {
     
     if (setting) {
       // Update existing setting
-      setting.attributes.value = value
+      setting.getAttributes().value = value
       await setting.save()
     } else {
       // Create new setting

@@ -12,8 +12,6 @@ interface ScreenshotEvent {
     payload: ScreenshotPayload;
 }
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 // Debounce function to prevent multiple rapid executions
 function debounce<T extends (...args: any[]) => any>(
     func: T,
