@@ -28,10 +28,20 @@ async fn capture_screenshot(app_handle: &AppHandle) -> Result<Option<(String, i3
             let state = app_handle.state::<AppState>();
             if let Some(db) = state.inner().db.as_ref() {
                 if let Ok(mut conn) = db.lock() {
+                    // use diesel::prelude::*;
+                    // use crate::models::screenshots::dsl::*;
+
+                    // lets comment this out for now, will be a future feature
+                    // // Delete all previous screenshots
+                    // match diesel::delete(screenshots).execute(&mut *conn) {
+                    //     Ok(deleted) => println!("Deleted {} previous screenshots", deleted),
+                    //     Err(e) => println!("Error deleting previous screenshots: {:?}", e),
+                    // }
+
                     match crate::db::save_screenshot(&mut conn, base64_image.clone()) {
-                        Ok(id) => {
-                            println!("Screenshot saved to database with id: {}", id);
-                            return Ok(Some((base64_image, id)));
+                        Ok(screenshot_id) => {
+                            println!("Screenshot saved to database with id: {}", screenshot_id);
+                            return Ok(Some((base64_image, screenshot_id)));
                         }
                         Err(e) => println!("Error saving screenshot: {:?}", e),
                     }

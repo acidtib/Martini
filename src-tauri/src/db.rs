@@ -3,7 +3,6 @@ use tauri::{AppHandle, Manager, path::BaseDirectory};
 use chrono::Local;
 
 use crate::models::{Setting, screenshots, Screenshot};
-use crate::models::settings::settings as settings_table;
 
 // Type alias for the database connection
 pub type DbConnection = SqliteConnection;

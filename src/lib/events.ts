@@ -86,6 +86,4 @@ export const initializeEventListeners = () => {
         }
     })
 
-    // Handle new screenshot
-    // listen('new-screenshot', handleScreenshot);
 }
