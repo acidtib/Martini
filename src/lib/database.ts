@@ -61,7 +61,7 @@ abstract class Model<T extends BaseModel> {
         
         if (Object.keys(whereConditions).length > 0) {
           const { query, values } = this.buildWhereClause(whereConditions)
-          const existing = await db.select(
+          const existing = await db.select<{ id: number }[]>(
             `SELECT id FROM ${this.tableName}${query}`,
             values
           )
@@ -79,7 +79,7 @@ abstract class Model<T extends BaseModel> {
               existing[0].id
             ]
             
-            const result = await db.execute(
+            await db.execute(
               `UPDATE ${this.tableName} SET ${setClauses} WHERE id = ?`,
               values
             )
@@ -94,13 +94,15 @@ abstract class Model<T extends BaseModel> {
       const placeholders = columns.map(() => '?').join(', ')
       const values = Object.values(attrs)
       
-      const result = await db.execute(
+      const newId = (await db.execute(
         `INSERT INTO ${this.tableName} (${columns.join(', ')}) VALUES (${placeholders})`,
         values
-      )
-      const newId = result.lastInsertId
-      this.attributes.id = newId
-      return newId
+      )).lastInsertId
+      if (typeof newId === 'number') {
+        this.attributes.id = newId
+        return newId
+      }
+      throw new Error('Failed to get new ID after insert')
     } catch (error) {
       console.error(`Error saving ${this.tableName}:`, error)
       throw new Error(`Failed to save ${this.tableName}`)
@@ -132,7 +134,7 @@ abstract class Model<T extends BaseModel> {
     try {
       const instance = new this({})
       const db = await Model.getDb()
-      const results = await db.select(
+      const results = await db.select<{ id: number; [key: string]: any }>(
         `SELECT * FROM ${instance.tableName} WHERE id = ?`,
         [id]
       )
@@ -168,21 +170,28 @@ abstract class Model<T extends BaseModel> {
         query += ` LIMIT ${options.limit}`
       }
 
-      const results = await db.select(query, values)
-      return results.map(result => new this(result))
+      const results = await db.select<{ id: number; [key: string]: any }>(query, values)
+      return results.map((result: { id: number; [key: string]: any }) => new this(result))
     } catch (error) {
       console.error(`Error finding all ${this.name}:`, error)
       throw new Error(`Failed to find ${this.name} records`)
     }
   }
+
+  // Add public method to get attributes
+  public getAttributes(): T {
+    return this.attributes;
+  }
 }
 
 // Screenshot Model implementation
 interface Screenshot extends BaseModel {
-  name: string
-  image: string
-  recognized: boolean
-  ocr: boolean
+  id: number;
+  name: string;
+  image: string;
+  recognized: boolean;
+  ocr: boolean;
+  created_at: string;
 }
 
 export class Screenshots extends Model<Screenshot> {
