@@ -5,10 +5,7 @@ use crate::AppState;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use std::error::Error;
-use tauri::App;
-use tauri::AppHandle;
-use tauri::Manager;
-use tauri::Emitter;
+use tauri::{App, AppHandle, Manager, Emitter};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use std::sync::atomic::{AtomicBool, Ordering};
 use lazy_static::lazy_static;
@@ -76,6 +73,8 @@ async fn perform_ocr(app_handle: &AppHandle, cropped_image: String) -> Result<()
             println!("OCR completed in {:?}", ocr_time);
 
             if text_results.iter().any(|line| line.contains("Mission Summary")) {
+                let _ = app_handle.emit("open-screenshot-viewer", ());
+                
                 println!("Mission Summary detected");
             } else {
                 println!("No Mission Summary detected");
@@ -115,11 +114,13 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                         tauri::async_runtime::spawn(async move {
                             let _result = async {
                                 if let Ok(Some(base64_image)) = capture_screenshot(&app_handle).await {
-                                    let _ = app_handle.emit("open-screenshot-viewer", ());
+                                    // let _ = app_handle.emit("open-screenshot-viewer", ());
 
                                     match crop_image(&app_handle, base64_image).await {
                                         Ok(cropped_image) => {
                                             let _ = perform_ocr(&app_handle, cropped_image).await;
+
+                                            // let _ = app_handle.emit("open-screenshot-viewer", ());
                                         }
                                         Err(e) => println!("Error in cropping: {:?}", e),
                                     }
