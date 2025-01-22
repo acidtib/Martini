@@ -59,6 +59,7 @@ async fn capture_screenshot(app_handle: &AppHandle) -> Result<Option<(String, i3
 }
 
 async fn crop_image(app_handle: &AppHandle, base64_image: String) -> Result<String, Box<dyn Error + Send + Sync>> {
+    let _ = app_handle.emit("screenshot-status", "cropping");
     println!("Base64 image length: {}", base64_image.len());
     println!("Base64 image (first 100 chars): {}", &base64_image[..100.min(base64_image.len())]);
     let crop_start = std::time::Instant::now();
@@ -76,6 +77,7 @@ async fn crop_image(app_handle: &AppHandle, base64_image: String) -> Result<Stri
 }
 
 async fn perform_ocr(app_handle: &AppHandle, cropped_image: String, screenshot_id: i32) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let _ = app_handle.emit("screenshot-status", "recognizing");
     let ocr_start = std::time::Instant::now();
     match ocr::perform_ocr(app_handle.clone(), cropped_image).await {
         Ok(text_results) => {
@@ -101,9 +103,11 @@ async fn perform_ocr(app_handle: &AppHandle, cropped_image: String, screenshot_i
                             });
                     }
                 }
+                let _ = app_handle.emit("screenshot-status", "detected");
                 let _ = app_handle.emit("open-screenshot-viewer", ());
                 println!("Mission Summary detected");
             } else {
+                let _ = app_handle.emit("screenshot-status", "not-detected");
                 println!("No Mission Summary detected");
             }
             Ok(())
@@ -140,6 +144,7 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                         let app_handle = app_handle_clone.clone();
 
                         let _ = app_handle.emit("close-screenshot-viewer", ());
+                        let _ = app_handle.emit("screenshot-status", "capturing");
 
                         tauri::async_runtime::spawn(async move {
                             let _result = async {
