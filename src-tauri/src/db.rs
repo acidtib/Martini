@@ -37,6 +37,9 @@ pub fn save_screenshot(conn: &mut DbConnection, image_data: String) -> Result<i3
 
 pub async fn save_system_info(conn: &mut DbConnection) -> Result<(), Box<dyn std::error::Error>> {
     use tauri_plugin_system_info::utils::SysInfoState;
+    use crate::models::settings::settings::dsl::*;
+    use diesel::dsl::exists;
+    use diesel::select;
     
     // Initialize system info state
     let state = SysInfoState::default();
@@ -59,17 +62,23 @@ pub async fn save_system_info(conn: &mut DbConnection) -> Result<(), Box<dyn std
         ("system_memory", formatted_memory),
     ];
 
-    // Save each system info setting
-    for (key, value) in system_info {
-        let setting = Setting {
-            id: None,
-            key: key.to_string(),
-            value: value,
-        };
-
-        diesel::insert_into(settings_table::table)
-            .values(&setting)
-            .execute(conn)?;
+    // Update or insert each system info setting
+    for (setting_key, setting_value) in system_info {
+        let exists = select(exists(settings.filter(key.eq(setting_key.to_string())))).get_result(conn)?;
+        
+        if exists {
+            diesel::update(settings.filter(key.eq(setting_key.to_string())))
+                .set(value.eq(setting_value))
+                .execute(conn)?;
+        } else {
+            diesel::insert_into(settings)
+                .values(&Setting {
+                    id: None,
+                    key: setting_key.to_string(),
+                    value: setting_value,
+                })
+                .execute(conn)?;
+        }
     }
 
     Ok(())
