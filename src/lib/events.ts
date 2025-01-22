@@ -78,6 +78,14 @@ export const initializeEventListeners = () => {
     // Open screenshot viewer
     listen('open-screenshot-viewer', handleOpenScreenshotViewer)
 
+    // Close screenshot viewer
+    listen('close-screenshot-viewer', async () => {
+        const viewerWindow = await WebviewWindow.getByLabel('screenshot-viewer');
+        if (viewerWindow) {
+            viewerWindow.close();
+        }
+    })
+
     // Handle new screenshot
     // listen('new-screenshot', handleScreenshot);
 }
