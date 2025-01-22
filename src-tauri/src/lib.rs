@@ -89,16 +89,27 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            // Initialize the database connection
-            let conn = db::init(&app.handle());
-            
-            // Store the connection in the app state
-            app.manage(AppState {
-                db: Some(Mutex::new(conn)),
-            });
-            
-            shortcuts::register_shortcuts(app).map_err(|e| anyhow!("Failed to register shortcuts: {}", e))?;
-            Ok(())
+            tauri::async_runtime::block_on(async move {
+                let app_handle = app.handle();
+                let conn = db::init(&app_handle);
+                
+                // Store the database connection in the app state
+                app.manage(AppState {
+                    db: Some(Mutex::new(conn)),
+                });
+
+                // Initialize system info
+                if let Some(db_mutex) = app.state::<AppState>().db.as_ref() {
+                    if let Ok(mut conn) = db_mutex.lock() {
+                        if let Err(e) = db::save_system_info(&mut conn).await {
+                            eprintln!("Failed to save system info: {}", e);
+                        }
+                    }
+                }
+
+                shortcuts::register_shortcuts(app).map_err(|e| anyhow!("Failed to register shortcuts: {}", e))?;
+                Ok(())
+            })
         })
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())

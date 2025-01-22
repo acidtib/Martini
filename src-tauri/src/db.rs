@@ -2,7 +2,8 @@ use diesel::prelude::*;
 use tauri::{AppHandle, Manager, path::BaseDirectory};
 use chrono::Local;
 
-use crate::models::*;
+use crate::models::{Setting, screenshots, Screenshot};
+use crate::models::settings::settings as settings_table;
 
 // Type alias for the database connection
 pub type DbConnection = SqliteConnection;
@@ -32,6 +33,46 @@ pub fn save_screenshot(conn: &mut DbConnection, image_data: String) -> Result<i3
         .get_result(conn)?;
     
     Ok(last_id)
+}
+
+pub async fn save_system_info(conn: &mut DbConnection) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri_plugin_system_info::utils::SysInfoState;
+    
+    // Initialize system info state
+    let state = SysInfoState::default();
+    let mut sysinfo = state.sysinfo.lock().unwrap();
+
+    // Get system information
+    let cpu_count = sysinfo.cpu_count();
+    let os_name = sysinfo.name().unwrap_or_default();
+    let os_version = sysinfo.os_version().unwrap_or_default();
+    let memory = sysinfo.total_memory();
+
+    // Format memory size in GB
+    let total_memory_gb = memory as f64 / (1024.0 * 1024.0 * 1024.0);
+    let formatted_memory = format!("{:.2} GB", total_memory_gb);
+
+    // Create system info map
+    let system_info = vec![
+        ("system_os", format!("{} {}", os_name, os_version)),
+        ("system_cpu", format!("{} Cores", cpu_count)),
+        ("system_memory", formatted_memory),
+    ];
+
+    // Save each system info setting
+    for (key, value) in system_info {
+        let setting = Setting {
+            id: None,
+            key: key.to_string(),
+            value: value,
+        };
+
+        diesel::insert_into(settings_table::table)
+            .values(&setting)
+            .execute(conn)?;
+    }
+
+    Ok(())
 }
 
 fn get_db_path(app: &AppHandle) -> Result<String, Box<dyn std::error::Error>> {
