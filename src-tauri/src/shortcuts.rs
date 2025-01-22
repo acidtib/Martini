@@ -10,6 +10,12 @@ use tauri::AppHandle;
 use tauri::Manager;
 use tauri::Emitter;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use std::sync::atomic::{AtomicBool, Ordering};
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref IS_PROCESSING: AtomicBool = AtomicBool::new(false);
+}
 
 async fn capture_screenshot(app_handle: &AppHandle) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
     let start_time = std::time::Instant::now();
@@ -95,20 +101,33 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |_shortcut_handle, shortcut, event| {
                     if shortcut == &ctrl_shift_m && event.state() == ShortcutState::Pressed {
+                        // Check if we're already processing a screenshot
+                        if IS_PROCESSING.load(Ordering::SeqCst) {
+                            println!("Screenshot processing in progress, please wait...");
+                            return;
+                        }
+
+                        // Set the processing flag
+                        IS_PROCESSING.store(true, Ordering::SeqCst);
                         println!("Taking screenshot...");
 
                         let app_handle = app_handle_clone.clone();
                         tauri::async_runtime::spawn(async move {
-                            if let Ok(Some(base64_image)) = capture_screenshot(&app_handle).await {
-                                let _ = app_handle.emit("open-screenshot-viewer", ());
+                            let _result = async {
+                                if let Ok(Some(base64_image)) = capture_screenshot(&app_handle).await {
+                                    let _ = app_handle.emit("open-screenshot-viewer", ());
 
-                                match crop_image(&app_handle, base64_image).await {
-                                    Ok(cropped_image) => {
-                                        let _ = perform_ocr(&app_handle, cropped_image).await;
+                                    match crop_image(&app_handle, base64_image).await {
+                                        Ok(cropped_image) => {
+                                            let _ = perform_ocr(&app_handle, cropped_image).await;
+                                        }
+                                        Err(e) => println!("Error in cropping: {:?}", e),
                                     }
-                                    Err(e) => println!("Error in cropping: {:?}", e),
                                 }
-                            }
+                            }.await;
+
+                            // Reset the processing flag when we're done
+                            IS_PROCESSING.store(false, Ordering::SeqCst);
                         });
                     }
                 })
