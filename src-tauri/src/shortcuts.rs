@@ -5,10 +5,12 @@ use crate::AppState;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use std::error::Error;
-use tauri::{App, AppHandle, Manager, Emitter};
+use tauri::{App, AppHandle, Manager, Emitter, path::BaseDirectory};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use std::sync::atomic::{AtomicBool, Ordering};
 use lazy_static::lazy_static;
+use std::time::{SystemTime, UNIX_EPOCH};
+use image::ImageError;
 
 lazy_static! {
     static ref IS_PROCESSING: AtomicBool = AtomicBool::new(false);
@@ -24,6 +26,13 @@ async fn capture_screenshot(app_handle: &AppHandle) -> Result<Option<(String, i3
             let base64_image = STANDARD.encode(&image_data);
             let estimated_size_mb = base64_image.len() as f64 / (1024.0 * 1024.0);
             println!("Estimated image size: {:.2} MB", estimated_size_mb);
+
+            // Save the screenshot as JPEG
+            let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+            let debug_path = app_handle.path().resolve("debug_images", BaseDirectory::AppData)?;
+            std::fs::create_dir_all(&debug_path).map_err(|e| ImageError::IoError(e))?;
+            let filename = format!("{}/screenshot_{}.jpg", debug_path.to_str().unwrap(), timestamp);
+            std::fs::write(&filename, &image_data)?;
 
             let state = app_handle.state::<AppState>();
             if let Some(db) = state.inner().db.as_ref() {
@@ -143,7 +152,7 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
 
                         let app_handle = app_handle_clone.clone();
 
-                        let _ = app_handle.emit("close-screenshot-viewer", ());
+                        // let _ = app_handle.emit("close-screenshot-viewer", ());
                         let _ = app_handle.emit("screenshot-status", "capturing");
 
                         tauri::async_runtime::spawn(async move {
