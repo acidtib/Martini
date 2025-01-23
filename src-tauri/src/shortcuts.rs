@@ -72,7 +72,7 @@ async fn crop_image(app_handle: &AppHandle, base64_image: String) -> Result<Stri
     println!("Base64 image length: {}", base64_image.len());
     println!("Base64 image (first 100 chars): {}", &base64_image[..100.min(base64_image.len())]);
     let crop_start = std::time::Instant::now();
-    match crop::crop_image(app_handle.clone(), base64_image, crop::CropRegion::HuntMissionSummary).await {
+    match crop::crop_image(app_handle.clone(), base64_image, crop::CropRegion::MissionSummary).await {
         Ok(cropped_image) => {
             let crop_time = crop_start.elapsed();
             println!("Image cropped in {:?}", crop_time);

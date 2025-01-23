@@ -5,8 +5,13 @@ use tauri::{path::BaseDirectory, AppHandle, Emitter, Manager, Runtime};
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum CropRegion {
-    HuntMissionSummary,
-    HuntStatBountyToken
+    MissionSummary,
+
+    SummaryFirst,
+    SummarySecond,
+    SummaryThird,
+    SummaryFourth,
+    SummaryUsername,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -19,18 +24,43 @@ struct CropConfig {
 
 fn get_crop_config(region: CropRegion) -> CropConfig {
     match region {
-        CropRegion::HuntMissionSummary => CropConfig {
+        CropRegion::MissionSummary => CropConfig {
             x: 130,
             y: 95,
             width: 300,
             height: 95,
         },
 
-        CropRegion::HuntStatBountyToken => CropConfig {
+        CropRegion::SummaryFirst => CropConfig {
+            x: 219,
+            y: 200,
+            width: 335,
+            height: 90,
+        },
+        CropRegion::SummarySecond => CropConfig {
+            x: 616,
+            y: 200,
+            width: 356,
+            height: 90,
+        },
+        CropRegion::SummaryThird => CropConfig {
+            x: 219,
+            y: 300,
+            width: 335,
+            height: 90,
+        },
+        CropRegion::SummaryFourth => CropConfig {
             x: 616,
             y: 300,
             width: 356,
             height: 90,
+        },
+
+        CropRegion::SummaryUsername => CropConfig {
+            x: 160,
+            y: 636,
+            width: 400,
+            height: 48,
         },
     }
 }
