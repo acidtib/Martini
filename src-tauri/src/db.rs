@@ -13,10 +13,11 @@ pub fn init(app: &AppHandle) -> DbConnection {
         .expect("Failed to create database connection")
 }
 
-pub fn save_screenshot(conn: &mut DbConnection, image_data: String) -> Result<i32, diesel::result::Error> {
+pub fn save_screenshot(conn: &mut DbConnection, image_data: String, mission_type: String) -> Result<i32, diesel::result::Error> {
     let new_screenshot = Screenshot {
         id: None,
         name: "screenshot.jpg".to_string(),
+        mission_type,
         image: image_data,
         recognized: false,
         ocr: false,

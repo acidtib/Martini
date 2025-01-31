@@ -38,7 +38,7 @@ pub fn run() {
         },
         Migration {
             version: 2,
-            description: " Insert initial settings",
+            description: "Insert initial settings",
             sql: r#"
                     INSERT INTO settings (key, value) VALUES
                         ('bootstrapped', 'false'),
@@ -55,6 +55,7 @@ pub fn run() {
             sql: r#"
                     CREATE TABLE IF NOT EXISTS screenshots (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        mission_type TEXT NOT NULL,
                         name TEXT NOT NULL,
                         image TEXT NOT NULL,
                         recognized BOOLEAN DEFAULT 0,
