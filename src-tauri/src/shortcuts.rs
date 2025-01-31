@@ -16,7 +16,7 @@ lazy_static! {
     static ref IS_PROCESSING: AtomicBool = AtomicBool::new(false);
 }
 
-async fn capture_screenshot(app_handle: &AppHandle) -> Result<Option<(String, i32)>, Box<dyn Error + Send + Sync>> {
+async fn capture_screenshot(app_handle: &AppHandle) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
     let start_time = std::time::Instant::now();
     match screenshot::capture_window(&[".jpg", "notepad", "hunt", "Hunt: Showdown"]) {
         Ok(image_data) => {
@@ -34,31 +34,7 @@ async fn capture_screenshot(app_handle: &AppHandle) -> Result<Option<(String, i3
             let filename = format!("{}/screenshot_{}.jpg", debug_path.to_str().unwrap(), timestamp);
             std::fs::write(&filename, &image_data)?;
 
-            let state = app_handle.state::<AppState>();
-            if let Some(db) = state.inner().db.as_ref() {
-                if let Ok(mut conn) = db.lock() {
-                    // use diesel::prelude::*;
-                    // use crate::models::screenshots::dsl::*;
-
-                    // lets comment this out for now, will be a future feature
-                    // // Delete all previous screenshots
-                    // match diesel::delete(screenshots).execute(&mut *conn) {
-                    //     Ok(deleted) => println!("Deleted {} previous screenshots", deleted),
-                    //     Err(e) => println!("Error deleting previous screenshots: {:?}", e),
-                    // }
-
-                    match crate::db::save_screenshot(&mut conn, base64_image.clone()) {
-                        Ok(screenshot_id) => {
-                            println!("Screenshot saved to database with id: {}", screenshot_id);
-                            return Ok(Some((base64_image, screenshot_id)));
-                        }
-                        Err(e) => println!("Error saving screenshot: {:?}", e),
-                    }
-                } else {
-                    println!("Could not lock database connection");
-                }
-            }
-            Ok(Some((base64_image, 0)))
+            Ok(Some(base64_image))
         }
         Err(e) => {
             println!("Error capturing screenshot: {:?}", e);
@@ -85,7 +61,7 @@ async fn crop_image(app_handle: &AppHandle, base64_image: &str, region: crop::Cr
     }
 }
 
-async fn perform_ocr(app_handle: &AppHandle, base64_image: &str, screenshot_id: i32) -> Result<(), Box<dyn Error + Send + Sync>> {
+async fn perform_ocr(app_handle: &AppHandle, base64_image: &str) -> Result<Option<i32>, Box<dyn Error + Send + Sync>> {
     let _ = app_handle.emit("screenshot-status", "recognizing");
     
     // First, check if it's a mission summary screen
@@ -120,28 +96,40 @@ async fn perform_ocr(app_handle: &AppHandle, base64_image: &str, screenshot_id: 
         if mission_type != "unknown" {
             if let Some(db) = app_handle.state::<AppState>().inner().db.as_ref() {
                 if let Ok(mut conn) = db.lock() {
-                    use diesel::prelude::*;
-                    use crate::models::screenshots::dsl::*;
-                    
-                    // Update the recognized field for the specific screenshot
-                    diesel::update(screenshots.filter(id.eq(screenshot_id)))
-                        .set(recognized.eq(true))
-                        .execute(&mut *conn)
-                        .unwrap_or_else(|e| {
-                            println!("Error updating screenshot recognized status: {:?}", e);
-                            0
-                        });
+                    match crate::db::save_screenshot(&mut conn, base64_image.to_string(), mission_type.to_string()) {
+                        Ok(screenshot_id) => {
+                            println!("Screenshot saved to database with id: {}", screenshot_id);
+                            
+                            use diesel::prelude::*;
+                            use crate::models::screenshots::dsl::*;
+                            
+                            // Update the recognized field for the specific screenshot
+                            diesel::update(screenshots.filter(id.eq(screenshot_id)))
+                                .set(recognized.eq(true))
+                                .execute(&mut *conn)
+                                .unwrap_or_else(|e| {
+                                    println!("Error updating screenshot recognized status: {:?}", e);
+                                    0
+                                });
+
+                            let _ = app_handle.emit("screenshot-status", "detected");
+                            let _ = app_handle.emit("open-screenshot-viewer", ());
+                            println!("Mission Summary detected");
+                            return Ok(Some(screenshot_id));
+                        }
+                        Err(e) => {
+                            println!("Error saving screenshot: {:?}", e);
+                            return Ok(None);
+                        }
+                    }
                 }
             }
-            let _ = app_handle.emit("screenshot-status", "detected");
-            let _ = app_handle.emit("open-screenshot-viewer", ());
-            println!("Mission Summary detected");
-        } else {
-            let _ = app_handle.emit("screenshot-status", "not-detected");
-            println!("No Mission Summary detected");
         }
     }
-    Ok(())
+    
+    let _ = app_handle.emit("screenshot-status", "not-detected");
+    println!("No valid mission summary detected");
+    Ok(None)
 }
 
 pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -173,12 +161,12 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
 
                         tauri::async_runtime::spawn(async move {
                             let _result = async {
-                                if let Ok(Some((base64_image, screenshot_id))) = capture_screenshot(&app_handle).await {
+                                if let Ok(Some(base64_image)) = capture_screenshot(&app_handle).await {
                                     // let _ = app_handle.emit("open-screenshot-viewer", ());
 
                                     match crop_image(&app_handle, &base64_image, crop::CropRegion::MissionSummary).await {
-                                        Ok(cropped_image) => {
-                                            let _ = perform_ocr(&app_handle, &base64_image, screenshot_id).await;
+                                        Ok(_) => {
+                                            let _ = perform_ocr(&app_handle, &base64_image).await;
 
                                             // let _ = app_handle.emit("open-screenshot-viewer", ());
                                         }
