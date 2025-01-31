@@ -10,6 +10,7 @@ listen('refresh-screenshot-viewer', () => {
 
 interface Screenshot {
   id: number
+  mission_type: string
   name: string
   image: string
   recognized: boolean
@@ -43,6 +44,7 @@ onMounted(() => {
       <img :src="`data:image/jpeg;base64,${latestScreenshot.image}`" :alt="latestScreenshot.name" />
       <div class="screenshot-info">
         <p>ID: {{ latestScreenshot.id }}</p>
+        <p>Mission Type: {{ latestScreenshot.mission_type }}</p>
         <p>Name: {{ latestScreenshot.name }}</p>
         <p>Recognized: {{ latestScreenshot.recognized }}</p>
         <p>OCR: {{ latestScreenshot.ocr }}</p>
