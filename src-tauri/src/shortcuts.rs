@@ -67,12 +67,12 @@ async fn capture_screenshot(app_handle: &AppHandle) -> Result<Option<(String, i3
     }
 }
 
-async fn crop_image(app_handle: &AppHandle, base64_image: String) -> Result<String, Box<dyn Error + Send + Sync>> {
+async fn crop_image(app_handle: &AppHandle, base64_image: &str, region: crop::CropRegion) -> Result<String, Box<dyn Error + Send + Sync>> {
     let _ = app_handle.emit("screenshot-status", "cropping");
     println!("Base64 image length: {}", base64_image.len());
     println!("Base64 image (first 100 chars): {}", &base64_image[..100.min(base64_image.len())]);
     let crop_start = std::time::Instant::now();
-    match crop::crop_image(app_handle.clone(), base64_image, crop::CropRegion::MissionSummary).await {
+    match crop::crop_image(app_handle.clone(), base64_image.to_string(), region).await {
         Ok(cropped_image) => {
             let crop_time = crop_start.elapsed();
             println!("Image cropped in {:?}", crop_time);
@@ -85,47 +85,63 @@ async fn crop_image(app_handle: &AppHandle, base64_image: String) -> Result<Stri
     }
 }
 
-async fn perform_ocr(app_handle: &AppHandle, cropped_image: String, screenshot_id: i32) -> Result<(), Box<dyn Error + Send + Sync>> {
+async fn perform_ocr(app_handle: &AppHandle, base64_image: &str, screenshot_id: i32) -> Result<(), Box<dyn Error + Send + Sync>> {
     let _ = app_handle.emit("screenshot-status", "recognizing");
-    let ocr_start = std::time::Instant::now();
-    match ocr::perform_ocr(app_handle.clone(), cropped_image).await {
-        Ok(text_results) => {
-            let ocr_time = ocr_start.elapsed();
-            println!("OCR completed in {:?}", ocr_time);
-
-            let has_mission_summary = text_results.iter().any(|line| line.contains("Mission Summary"));
-            
-            // Update database if "Mission Summary" is found
-            if has_mission_summary {
-                if let Some(db) = app_handle.state::<AppState>().inner().db.as_ref() {
-                    if let Ok(mut conn) = db.lock() {
-                        use diesel::prelude::*;
-                        use crate::models::screenshots::dsl::*;
-                        
-                        // Update the recognized field for the specific screenshot
-                        diesel::update(screenshots.filter(id.eq(screenshot_id)))
-                            .set(recognized.eq(true))
-                            .execute(&mut *conn)
-                            .unwrap_or_else(|e| {
-                                println!("Error updating screenshot recognized status: {:?}", e);
-                                0
-                            });
-                    }
+    
+    // First, check if it's a mission summary screen
+    let mission_summary_crop = crop_image(app_handle, base64_image, crop::CropRegion::MissionSummary).await?;
+    let mission_summary_text = ocr::perform_ocr(app_handle.clone(), mission_summary_crop).await?;
+    
+    let has_mission_summary = mission_summary_text.iter()
+        .any(|line| line.to_lowercase().contains("mission summary"));
+    
+    if has_mission_summary {
+        // If it is a mission summary, check the first summary region for mission type
+        let summary_first_crop = crop_image(app_handle, base64_image, crop::CropRegion::SummaryFirst).await?;
+        let summary_first_text = ocr::perform_ocr(app_handle.clone(), summary_first_crop).await?;
+        
+        let has_bounty_mission = summary_first_text.iter()
+            .any(|line| line.to_lowercase().contains("bounty collected"));
+        let has_soul_survival = summary_first_text.iter()
+            .any(|line| line.to_lowercase().contains("rifts closed"));
+        
+        // Determine mission type
+        let mission_type = if has_bounty_mission {
+            "bounty"
+        } else if has_soul_survival {
+            "soul_survival"
+        } else {
+            "unknown"
+        };
+        
+        println!("Detected mission type: {}", mission_type);
+        
+        // Update database if a valid mission type is detected
+        if mission_type != "unknown" {
+            if let Some(db) = app_handle.state::<AppState>().inner().db.as_ref() {
+                if let Ok(mut conn) = db.lock() {
+                    use diesel::prelude::*;
+                    use crate::models::screenshots::dsl::*;
+                    
+                    // Update the recognized field for the specific screenshot
+                    diesel::update(screenshots.filter(id.eq(screenshot_id)))
+                        .set(recognized.eq(true))
+                        .execute(&mut *conn)
+                        .unwrap_or_else(|e| {
+                            println!("Error updating screenshot recognized status: {:?}", e);
+                            0
+                        });
                 }
-                let _ = app_handle.emit("screenshot-status", "detected");
-                let _ = app_handle.emit("open-screenshot-viewer", ());
-                println!("Mission Summary detected");
-            } else {
-                let _ = app_handle.emit("screenshot-status", "not-detected");
-                println!("No Mission Summary detected");
             }
-            Ok(())
-        }
-        Err(e) => {
-            println!("Error performing OCR: {:?}", e);
-            Err(e.into())
+            let _ = app_handle.emit("screenshot-status", "detected");
+            let _ = app_handle.emit("open-screenshot-viewer", ());
+            println!("Mission Summary detected");
+        } else {
+            let _ = app_handle.emit("screenshot-status", "not-detected");
+            println!("No Mission Summary detected");
         }
     }
+    Ok(())
 }
 
 pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -160,9 +176,9 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                                 if let Ok(Some((base64_image, screenshot_id))) = capture_screenshot(&app_handle).await {
                                     // let _ = app_handle.emit("open-screenshot-viewer", ());
 
-                                    match crop_image(&app_handle, base64_image).await {
+                                    match crop_image(&app_handle, &base64_image, crop::CropRegion::MissionSummary).await {
                                         Ok(cropped_image) => {
-                                            let _ = perform_ocr(&app_handle, cropped_image, screenshot_id).await;
+                                            let _ = perform_ocr(&app_handle, &base64_image, screenshot_id).await;
 
                                             // let _ = app_handle.emit("open-screenshot-viewer", ());
                                         }
