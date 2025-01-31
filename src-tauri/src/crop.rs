@@ -1,12 +1,17 @@
 use image::{GenericImageView, ImageError};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use std::io::Cursor;
-use tauri::{AppHandle, Runtime, Emitter};
+use tauri::{path::BaseDirectory, AppHandle, Emitter, Manager, Runtime};
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum CropRegion {
-    HuntMissionSummary,
-    HuntStatBountyToken
+    MissionSummary,
+
+    SummaryFirst,
+    SummarySecond,
+    SummaryThird,
+    SummaryFourth,
+    SummaryUsername,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -19,18 +24,43 @@ struct CropConfig {
 
 fn get_crop_config(region: CropRegion) -> CropConfig {
     match region {
-        CropRegion::HuntMissionSummary => CropConfig {
+        CropRegion::MissionSummary => CropConfig {
             x: 130,
             y: 95,
             width: 300,
             height: 95,
         },
 
-        CropRegion::HuntStatBountyToken => CropConfig {
+        CropRegion::SummaryFirst => CropConfig {
+            x: 219,
+            y: 200,
+            width: 335,
+            height: 90,
+        },
+        CropRegion::SummarySecond => CropConfig {
+            x: 616,
+            y: 200,
+            width: 356,
+            height: 90,
+        },
+        CropRegion::SummaryThird => CropConfig {
+            x: 219,
+            y: 300,
+            width: 335,
+            height: 90,
+        },
+        CropRegion::SummaryFourth => CropConfig {
             x: 616,
             y: 300,
             width: 356,
             height: 90,
+        },
+
+        CropRegion::SummaryUsername => CropConfig {
+            x: 160,
+            y: 636,
+            width: 400,
+            height: 48,
         },
     }
 }
@@ -57,7 +87,7 @@ pub async fn crop_image<R: Runtime>(app: AppHandle<R>, base64_image: String, reg
     
     // Spawn a new thread for image cropping
     tokio::task::spawn_blocking(move || {
-        let result = process_crop(&base64_image, region);
+        let result = process_crop(&app, &base64_image, region);
         
         match result {
             Ok(cropped_image) => {
@@ -78,7 +108,7 @@ pub async fn crop_image<R: Runtime>(app: AppHandle<R>, base64_image: String, reg
     }).await.unwrap_or_else(|e| Err(e.to_string()))
 }
 
-fn process_crop(base64_image: &str, region: CropRegion) -> Result<String, ImageError> {
+pub fn process_crop<R: Runtime>(app: &AppHandle<R>, base64_image: &str, region: CropRegion) -> Result<String, ImageError> {
     // Decode base64 image
     let image_data = BASE64.decode(base64_image).map_err(|e| {
         ImageError::IoError(std::io::Error::new(std::io::ErrorKind::InvalidData, e))
@@ -101,8 +131,10 @@ fn process_crop(base64_image: &str, region: CropRegion) -> Result<String, ImageE
     
     // Save the cropped image as JPEG for viewing
     // Create debug directory if it doesn't exist
-    std::fs::create_dir_all("../debug_images").map_err(|e| ImageError::IoError(e))?;
-    let filename = format!("../debug_images/{:?}.jpg", region);
+    let debug_path = app.path().resolve("debug_images", BaseDirectory::AppData)
+        .map_err(|e| ImageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    std::fs::create_dir_all(&debug_path).map_err(|e| ImageError::IoError(e))?;
+    let filename = format!("{}/{:?}.jpg", debug_path.to_str().unwrap(), region);
     cropped.save(&filename)?;
 
     let mut buffer = Cursor::new(Vec::new());

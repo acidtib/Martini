@@ -1,7 +1,6 @@
 // screenshot.rs
 use std::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
-use image::ImageError;
 use xcap::Window;
 
 /// Structure to hold window information
@@ -24,14 +23,8 @@ pub fn capture_window(window_titles: &[&str]) -> Result<Vec<u8>, Box<dyn Error +
 
     // Convert to JPEG with quality settings
     let mut jpeg_data = Vec::new();
-    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_data, 95);
+    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_data, 100);
     encoder.encode_image(&image)?;
-
-    // Save the screenshot as JPEG
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-    std::fs::create_dir_all("../debug_images").map_err(|e| ImageError::IoError(e))?;
-    let filename = format!("../debug_images/screenshot_{}.jpg", timestamp);
-    std::fs::write(&filename, &jpeg_data)?;
 
     Ok(jpeg_data)
 }

@@ -12,27 +12,9 @@ interface ScreenshotEvent {
     payload: ScreenshotPayload;
 }
 
-// Debounce function to prevent multiple rapid executions
-function debounce<T extends (...args: any[]) => any>(
-    func: T,
-    wait: number
-): (...args: Parameters<T>) => void {
-    let timeout: NodeJS.Timeout | null = null;
-    
-    return (...args: Parameters<T>) => {
-        if (timeout) {
-            clearTimeout(timeout);
-        }
-        
-        timeout = setTimeout(() => {
-            func(...args);
-            timeout = null;
-        }, wait);
-    };
-}
-
 export const initializeEventListeners = () => {
-    const handleOpenScreenshotViewer = debounce(async () => {
+    // open screenshot viewer
+    const handleOpenScreenshotViewer = async () => {
         // Try to get existing window first
         let viewerWindow: WebviewWindow | null = await WebviewWindow.getByLabel('screenshot-viewer');
                 
@@ -62,26 +44,27 @@ export const initializeEventListeners = () => {
                 console.error('Error creating viewerWindow:', e);
             });
         }
-    }, 1000);
+    };
 
     // save screenshot
-    listen('save-screenshot', async (event: ScreenshotEvent) => {
+    const handleSaveScreenshot = async (event: ScreenshotEvent) => {
         console.log('Saving screenshot...');
 
         const { image, name = 'screenshot.jpg' } = event.payload
         const screenshot = new Screenshots({ name, image })
         await screenshot.save()
-    });
+    }
 
-    // Open screenshot viewer
-    listen('open-screenshot-viewer', handleOpenScreenshotViewer)
-
-    // Close screenshot viewer
-    listen('close-screenshot-viewer', async () => {
+    // close screenshot viewer
+    const handleCloseScreenshotViewer = async () => {
         const viewerWindow = await WebviewWindow.getByLabel('screenshot-viewer');
         if (viewerWindow) {
             viewerWindow.close();
         }
-    })
+    }
 
+    
+    listen('save-screenshot', handleSaveScreenshot);
+    listen('open-screenshot-viewer', handleOpenScreenshotViewer)
+    listen('close-screenshot-viewer', handleCloseScreenshotViewer)
 }

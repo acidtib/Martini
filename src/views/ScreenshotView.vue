@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { listen } from '@tauri-apps/api/event';
+import { listen, emit } from '@tauri-apps/api/event';
 import { Screenshots } from '../lib/database'
 
 listen('refresh-screenshot-viewer', () => {
@@ -10,6 +10,7 @@ listen('refresh-screenshot-viewer', () => {
 
 interface Screenshot {
   id: number
+  mission_type: string
   name: string
   image: string
   recognized: boolean
@@ -35,6 +36,14 @@ const loadLatestScreenshot = async () => {
 onMounted(() => {
   loadLatestScreenshot()
 })
+
+const handleSubmit = () => {
+  console.log('this is submit');
+};
+
+const handleNeverMind = async () => {
+  await emit('close-screenshot-viewer');
+};
 </script>
 
 <template>
@@ -43,10 +52,15 @@ onMounted(() => {
       <img :src="`data:image/jpeg;base64,${latestScreenshot.image}`" :alt="latestScreenshot.name" />
       <div class="screenshot-info">
         <p>ID: {{ latestScreenshot.id }}</p>
+        <p>Mission Type: {{ latestScreenshot.mission_type }}</p>
         <p>Name: {{ latestScreenshot.name }}</p>
         <p>Recognized: {{ latestScreenshot.recognized }}</p>
         <p>OCR: {{ latestScreenshot.ocr }}</p>
         <p>Taken: {{ new Date(latestScreenshot.created_at).toLocaleString() }}</p>
+      </div>
+      <div class="button-container">
+        <button @click="handleSubmit">Submit</button>
+        <button @click="handleNeverMind">Never Mind</button>
       </div>
     </div>
     <div v-else class="no-screenshot">
@@ -93,5 +107,33 @@ onMounted(() => {
   background-color: rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
   color: #9ca3af;
+}
+
+.button-container {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  background-color: #3b82f6;
+  color: white;
+}
+
+button:hover {
+  background-color: #2563eb;
+}
+
+button:last-child {
+  background-color: #6b7280;
+}
+
+button:last-child:hover {
+  background-color: #4b5563;
 }
 </style>
