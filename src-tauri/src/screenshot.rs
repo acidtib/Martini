@@ -23,7 +23,7 @@ pub fn capture_window(window_titles: &[&str]) -> Result<Vec<u8>, Box<dyn Error +
 
     // Convert to JPEG with quality settings
     let mut jpeg_data = Vec::new();
-    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_data, 95);
+    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_data, 100);
     encoder.encode_image(&image)?;
 
     Ok(jpeg_data)
