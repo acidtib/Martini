@@ -10,6 +10,8 @@ interface SettingData {
 const settings = ref<SettingData[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+const modifiedSettings = ref<Map<string, string>>(new Map())
+const saving = ref(false)
 
 // System settings that should be read-only
 const SYSTEM_SETTINGS = ['bootstrapped', 'installed_on', 'system_cpu', 'system_memory', 'system_os']
@@ -58,25 +60,39 @@ const loadSettings = async () => {
 
 const updateSetting = async (key: string, value: string) => {
   if (SYSTEM_SETTINGS.includes(key)) return // Prevent updating system settings
+  modifiedSettings.value.set(key, value)
+}
+
+const saveSettings = async () => {
+  if (modifiedSettings.value.size === 0) return
   
   try {
-    // Find existing setting
-    const results = await Settings.findAll({ where: { key }, limit: 1 })
-    const setting = results[0]
+    saving.value = true
+    error.value = null
     
-    if (setting) {
-      // Update existing setting
-      setting.getAttributes().value = value
-      await setting.save()
-    } else {
-      // Create new setting
-      const newSetting = new Settings({ key, value })
-      await newSetting.save()
+    for (const [key, value] of modifiedSettings.value.entries()) {
+      // Find existing setting
+      const results = await Settings.findAll({ where: { key }, limit: 1 })
+      const setting = results[0]
+      
+      if (setting) {
+        // Update existing setting
+        setting.getAttributes().value = value
+        await setting.save()
+      } else {
+        // Create new setting
+        const newSetting = new Settings({ key, value })
+        await newSetting.save()
+      }
     }
     
+    modifiedSettings.value.clear()
     await loadSettings() // Reload to get updated data
   } catch (err) {
-    console.error('Error updating setting:', err)
+    error.value = err instanceof Error ? err.message : 'Failed to save settings'
+    console.error('Error saving settings:', err)
+  } finally {
+    saving.value = false
   }
 }
 
@@ -115,7 +131,18 @@ onMounted(() => {
 
       <!-- Other Settings -->
       <div v-if="settings.length > systemSettings.length">
-        <h3 class="text-xl font-semibold mb-4">Other Settings</h3>
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-semibold">Other Settings</h3>
+          <button
+            v-if="modifiedSettings.size > 0"
+            @click="saveSettings"
+            :disabled="saving"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <span v-if="saving">Saving...</span>
+            <span v-else>Save Changes</span>
+          </button>
+        </div>
         <div class="settings-grid">
           <div 
             v-for="setting in settings.filter(s => !SYSTEM_SETTINGS.includes(s.key))" 
@@ -127,9 +154,10 @@ onMounted(() => {
               <div class="setting-value">
                 <input
                   type="text"
-                  :value="setting.value"
-                  @change="e => updateSetting(setting.key, (e.target as HTMLInputElement).value)"
+                  :value="modifiedSettings.has(setting.key) ? modifiedSettings.get(setting.key) : setting.value"
+                  @input="e => updateSetting(setting.key, (e.target as HTMLInputElement).value)"
                   class="bg-transparent border-b border-gray-300 focus:border-blue-500 outline-none px-2 py-1 w-full"
+                  :class="{ 'border-yellow-500': modifiedSettings.has(setting.key) }"
                 />
               </div>
             </div>
