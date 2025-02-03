@@ -89,7 +89,6 @@ pub async fn submit_screenshot(app_handle: tauri::AppHandle, screenshot_id: i32)
 #[tauri::command]
 pub async fn reload_shortcut(app_handle: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Modifiers, Code};
-    use std::str::FromStr;
     use crate::shortcuts::{get_shortcut, format_key_for_code, register_shortcut};
 
     // Unregister all existing shortcuts

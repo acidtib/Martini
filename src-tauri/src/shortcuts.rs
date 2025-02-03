@@ -5,7 +5,7 @@ use crate::AppState;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use std::error::Error;
-use tauri::{App, AppHandle, Manager, Emitter, path::BaseDirectory};
+use tauri::{AppHandle, Manager, Emitter, path::BaseDirectory};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use std::sync::atomic::{AtomicBool, Ordering};
 use lazy_static::lazy_static;
@@ -162,7 +162,7 @@ pub fn setup_shortcut_handler(app_handle: &AppHandle) -> Result<(), Box<dyn Erro
 
     app_handle.plugin(
         tauri_plugin_global_shortcut::Builder::new()
-            .with_handler(move |_shortcut_handle, shortcut_pressed, event| {
+            .with_handler(move |_shortcut_handle, _shortcut_pressed, event| {
                 if event.state() == ShortcutState::Pressed {
                     // Check if we're already processing a screenshot
                     if IS_PROCESSING.load(Ordering::SeqCst) {
