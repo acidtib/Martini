@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { listen, emit } from '@tauri-apps/api/event';
 import { Screenshots } from '../lib/database'
 
@@ -26,7 +27,7 @@ const loadLatestScreenshot = async () => {
       orderBy: { column: 'created_at', direction: 'DESC' },
       limit: 1
     })
-    latestScreenshot.value = screenshots[0]?.getAttributes() || null
+    latestScreenshot.value = (screenshots[0]?.getAttributes() as Screenshot) || null
   } catch (error) {
     console.error('Error loading latest screenshot:', error)
   }
@@ -39,6 +40,7 @@ onMounted(() => {
 
 const handleSubmit = () => {
   console.log('this is submit');
+  invoke('submit_screenshot', { screenshotId: latestScreenshot.value?.id });
 };
 
 const handleNeverMind = async () => {

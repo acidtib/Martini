@@ -1,6 +1,5 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use tauri::Manager;
-use tauri_plugin_sql::{Migration, MigrationKind};
 use anyhow::anyhow;
 use std::sync::Mutex;
 
@@ -9,63 +8,18 @@ pub struct AppState {
     pub db: Option<Mutex<db::DbConnection>>,
 }
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 pub mod db;
 pub mod models;
+mod commands;
 pub mod screenshot;
 pub mod shortcuts;
 pub mod crop;
 pub mod ocr;
+pub mod migrations;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let migrations = vec![
-        Migration {
-            version: 1,
-            description: "create settings table",
-            sql: r#"
-                    CREATE TABLE IF NOT EXISTS settings (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        key TEXT NOT NULL,
-                        value TEXT NOT NULL
-                    );
-                "#,
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 2,
-            description: "Insert initial settings",
-            sql: r#"
-                    INSERT INTO settings (key, value) VALUES
-                        ('bootstrapped', 'false'),
-                        ('installed_on', CURRENT_TIMESTAMP),
-                        ('system_os', '-'),
-                        ('system_cpu', '-'),
-                        ('system_memory', '-');
-                "#,
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 3,
-            description: "create screenshots table",
-            sql: r#"
-                    CREATE TABLE IF NOT EXISTS screenshots (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        mission_type TEXT NOT NULL,
-                        name TEXT NOT NULL,
-                        image TEXT NOT NULL,
-                        recognized BOOLEAN DEFAULT 0,
-                        ocr BOOLEAN DEFAULT 0,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    );
-                "#,
-            kind: MigrationKind::Up,
-        },
-    ];
+    let migrations = migrations::get_migrations();
 
     tauri::Builder::default()
         .on_window_event(|window, event| match event {
@@ -127,7 +81,7 @@ pub fn run() {
                 .expect("failed to focus window");
         }))
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![commands::submit_screenshot])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

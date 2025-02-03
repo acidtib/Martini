@@ -22,6 +22,11 @@ pub fn save_screenshot(conn: &mut DbConnection, image_data: String, mission_type
         recognized: false,
         ocr: false,
         created_at: Local::now().naive_local(),
+        summary_first: None,
+        summary_second: None,
+        summary_third: None,
+        summary_fourth: None,
+        summary_username: None,
     };
     
     diesel::insert_into(screenshots::table)
