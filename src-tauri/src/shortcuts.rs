@@ -11,6 +11,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use lazy_static::lazy_static;
 use std::time::{SystemTime, UNIX_EPOCH};
 use image::ImageError;
+use crate::models::settings::settings::dsl::*;
+use diesel::prelude::*;
 
 lazy_static! {
     static ref IS_PROCESSING: AtomicBool = AtomicBool::new(false);
@@ -132,18 +134,52 @@ async fn perform_ocr(app_handle: &AppHandle, base64_image: &str) -> Result<Optio
     Ok(None)
 }
 
+fn get_shortcut(app: &App) -> Result<String, Box<dyn Error + Send + Sync>> {
+    if let Some(db) = app.state::<AppState>().inner().db.as_ref() {
+        if let Ok(mut conn) = db.lock() {
+            let shortcut_value: String = settings
+                .filter(key.eq("shortcut"))
+                .select(value)
+                .first(&mut *conn)?;
+            return Ok(shortcut_value);
+        }
+    }
+    Ok("Ctrl+Shift+M".to_string()) // Default fallback if database query fails
+}
+
 pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sync>> {
     #[cfg(desktop)]
     {
-        let ctrl_shift_m = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyM);
-
+        let shortcut_str = get_shortcut(app)?;
+        let parts: Vec<&str> = shortcut_str.split('+').collect();
+        
+        let mut modifiers = Modifiers::empty();
+        let mut code = None;
+        
+        for part in parts.iter() {
+            match *part {
+                "Ctrl" => modifiers |= Modifiers::CONTROL,
+                "Shift" => modifiers |= Modifiers::SHIFT,
+                "Alt" => modifiers |= Modifiers::ALT,
+                "Super" => modifiers |= Modifiers::SUPER,
+                key => {
+                    code = Some(match key {
+                        "M" => Code::KeyM,
+                        // Add more key mappings as needed
+                        _ => return Err("Unsupported key in shortcut".into()),
+                    });
+                }
+            }
+        }
+        
+        let shortcut = Shortcut::new(Some(modifiers), code.unwrap_or(Code::KeyM));
         let app_handle = app.handle().clone();
         let app_handle_clone = app_handle.clone();
 
         app_handle.plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(move |_shortcut_handle, shortcut, event| {
-                    if shortcut == &ctrl_shift_m && event.state() == ShortcutState::Pressed {
+                .with_handler(move |_shortcut_handle, shortcut_pressed, event| {
+                    if shortcut_pressed == &shortcut && event.state() == ShortcutState::Pressed {
                         // Check if we're already processing a screenshot
                         if IS_PROCESSING.load(Ordering::SeqCst) {
                             println!("Screenshot processing in progress, please wait...");
@@ -182,7 +218,7 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                 })
                 .build(),
         )?;
-        app.global_shortcut().register(ctrl_shift_m)?;
+        app.global_shortcut().register(shortcut)?;
     }
     Ok(())
 }
