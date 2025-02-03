@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { Settings } from '../lib/database'
 
 interface SettingData {
@@ -70,6 +71,8 @@ const saveSettings = async () => {
     saving.value = true
     error.value = null
     
+    let shortcutUpdated = false;
+    
     for (const [key, value] of modifiedSettings.value.entries()) {
       // Find existing setting
       const results = await Settings.findAll({ where: { key }, limit: 1 })
@@ -79,11 +82,17 @@ const saveSettings = async () => {
         // Update existing setting
         setting.getAttributes().value = value
         await setting.save()
-      } else {
-        // Create new setting
-        const newSetting = new Settings({ key, value })
-        await newSetting.save()
+
+        // Check if shortcut was updated
+        if (key === 'shortcut') {
+          shortcutUpdated = true;
+        }
       }
+    }
+    
+    // Only reload shortcut if it was updated
+    if (shortcutUpdated) {
+      await invoke('reload_shortcut');
     }
     
     modifiedSettings.value.clear()
