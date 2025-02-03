@@ -27,7 +27,7 @@ const loadLatestScreenshot = async () => {
       orderBy: { column: 'created_at', direction: 'DESC' },
       limit: 1
     })
-    latestScreenshot.value = screenshots[0]?.getAttributes() || null
+    latestScreenshot.value = (screenshots[0]?.getAttributes() as Screenshot) || null
   } catch (error) {
     console.error('Error loading latest screenshot:', error)
   }
