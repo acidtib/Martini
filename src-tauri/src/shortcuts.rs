@@ -15,7 +15,7 @@ use crate::models::settings::settings::dsl::*;
 use diesel::prelude::*;
 
 lazy_static! {
-    static ref IS_PROCESSING: AtomicBool = AtomicBool::new(false);
+    pub static ref IS_PROCESSING: AtomicBool = AtomicBool::new(false);
 }
 
 async fn capture_screenshot(app_handle: &AppHandle) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
@@ -134,8 +134,8 @@ async fn perform_ocr(app_handle: &AppHandle, base64_image: &str) -> Result<Optio
     Ok(None)
 }
 
-fn get_shortcut(app: &App) -> Result<String, Box<dyn Error + Send + Sync>> {
-    if let Some(db) = app.state::<AppState>().inner().db.as_ref() {
+pub fn get_shortcut(app_handle: &AppHandle) -> Result<String, Box<dyn Error + Send + Sync>> {
+    if let Some(db) = app_handle.state::<AppState>().inner().db.as_ref() {
         if let Ok(mut conn) = db.lock() {
             let shortcut_value: String = settings
                 .filter(key.eq("shortcut"))
@@ -147,7 +147,7 @@ fn get_shortcut(app: &App) -> Result<String, Box<dyn Error + Send + Sync>> {
     Ok("Ctrl+Shift+M".to_string()) // Default fallback if database query fails
 }
 
-fn format_key_for_code(input_key: &str) -> String {
+pub fn format_key_for_code(input_key: &str) -> String {
     let key_str = input_key.trim().to_uppercase();
     // Single letters need to be prefixed with "Key"
     if key_str.len() == 1 && key_str.chars().next().unwrap().is_ascii_alphabetic() {
@@ -157,10 +157,10 @@ fn format_key_for_code(input_key: &str) -> String {
     }
 }
 
-pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sync>> {
+pub fn register_shortcuts(app_handle: &AppHandle) -> Result<(), Box<dyn Error + Send + Sync>> {
     #[cfg(desktop)]
     {
-        let shortcut_str = get_shortcut(app)?;
+        let shortcut_str = get_shortcut(app_handle)?;
         let parts: Vec<&str> = shortcut_str.split('+').collect();
         
         let mut modifiers = Modifiers::empty();
@@ -189,7 +189,6 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
         };
 
         let shortcut = Shortcut::new(Some(modifiers), code);
-        let app_handle = app.handle().clone();
         let app_handle_clone = app_handle.clone();
 
         app_handle.plugin(
@@ -206,21 +205,16 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                         IS_PROCESSING.store(true, Ordering::SeqCst);
                         println!("Taking screenshot...");
 
-                        let app_handle = app_handle_clone.clone();
-
                         // let _ = app_handle.emit("close-screenshot-viewer", ());
-                        let _ = app_handle.emit("screenshot-status", "capturing");
+                        let _ = app_handle_clone.emit("screenshot-status", "capturing");
 
+                        let handle = app_handle_clone.clone();
                         tauri::async_runtime::spawn(async move {
                             let _result = async {
-                                if let Ok(Some(base64_image)) = capture_screenshot(&app_handle).await {
-                                    // let _ = app_handle.emit("open-screenshot-viewer", ());
-
-                                    match crop_image(&app_handle, &base64_image, crop::CropRegion::MissionSummary).await {
+                                if let Ok(Some(base64_image)) = capture_screenshot(&handle).await {
+                                    match crop_image(&handle, &base64_image, crop::CropRegion::MissionSummary).await {
                                         Ok(_) => {
-                                            let _ = perform_ocr(&app_handle, &base64_image).await;
-
-                                            // let _ = app_handle.emit("open-screenshot-viewer", ());
+                                            let _ = perform_ocr(&handle, &base64_image).await;
                                         }
                                         Err(e) => println!("Error in cropping: {:?}", e),
                                     }
@@ -234,7 +228,7 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
                 })
                 .build(),
         )?;
-        app.global_shortcut().register(shortcut)?;
+        app_handle.global_shortcut().register(shortcut)?;
     }
     Ok(())
 }

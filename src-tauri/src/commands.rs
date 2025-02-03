@@ -85,3 +85,18 @@ pub async fn submit_screenshot(app_handle: tauri::AppHandle, screenshot_id: i32)
 
     Ok(())
 }
+
+#[tauri::command]
+pub async fn reload_shortcut(app_handle: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_global_shortcut::GlobalShortcutExt;
+
+    // Unregister all existing shortcuts
+    app_handle.global_shortcut().unregister_all()
+        .map_err(|e| format!("Failed to unregister shortcuts: {}", e))?;
+
+    // Re-register shortcuts using the existing function
+    crate::shortcuts::register_shortcuts(&app_handle)
+        .map_err(|e| format!("Failed to register shortcuts: {}", e))?;
+
+    Ok(())
+}

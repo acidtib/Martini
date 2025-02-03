@@ -62,7 +62,7 @@ pub fn run() {
                     }
                 }
 
-                shortcuts::register_shortcuts(app).map_err(|e| anyhow!("Failed to register shortcuts: {}", e))?;
+                shortcuts::register_shortcuts(&app.handle()).map_err(|e| anyhow!("Failed to register shortcuts: {}", e))?;
                 Ok(())
             })
         })
@@ -81,7 +81,10 @@ pub fn run() {
                 .expect("failed to focus window");
         }))
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![commands::submit_screenshot])
+        .invoke_handler(tauri::generate_handler![
+            commands::submit_screenshot,
+            commands::reload_shortcut
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
