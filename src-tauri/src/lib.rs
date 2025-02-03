@@ -9,13 +9,9 @@ pub struct AppState {
     pub db: Option<Mutex<db::DbConnection>>,
 }
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 pub mod db;
 pub mod models;
+mod commands;
 pub mod screenshot;
 pub mod shortcuts;
 pub mod crop;
@@ -127,7 +123,7 @@ pub fn run() {
                 .expect("failed to focus window");
         }))
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![commands::submit_screenshot])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

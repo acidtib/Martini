@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { listen, emit } from '@tauri-apps/api/event';
 import { Screenshots } from '../lib/database'
 
@@ -39,6 +40,7 @@ onMounted(() => {
 
 const handleSubmit = () => {
   console.log('this is submit');
+  invoke('submit_screenshot', { screenshotId: latestScreenshot.value?.id });
 };
 
 const handleNeverMind = async () => {
