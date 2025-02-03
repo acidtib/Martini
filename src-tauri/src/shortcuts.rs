@@ -147,6 +147,16 @@ fn get_shortcut(app: &App) -> Result<String, Box<dyn Error + Send + Sync>> {
     Ok("Ctrl+Shift+M".to_string()) // Default fallback if database query fails
 }
 
+fn format_key_for_code(input_key: &str) -> String {
+    let key_str = input_key.trim().to_uppercase();
+    // Single letters need to be prefixed with "Key"
+    if key_str.len() == 1 && key_str.chars().next().unwrap().is_ascii_alphabetic() {
+        format!("Key{}", key_str)
+    } else {
+        key_str
+    }
+}
+
 pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sync>> {
     #[cfg(desktop)]
     {
@@ -154,25 +164,31 @@ pub fn register_shortcuts(app: &mut App) -> Result<(), Box<dyn Error + Send + Sy
         let parts: Vec<&str> = shortcut_str.split('+').collect();
         
         let mut modifiers = Modifiers::empty();
-        let mut code = None;
+        let mut key_part = None;
         
+        // Process each part of the shortcut string
         for part in parts.iter() {
-            match *part {
-                "Ctrl" => modifiers |= Modifiers::CONTROL,
-                "Shift" => modifiers |= Modifiers::SHIFT,
-                "Alt" => modifiers |= Modifiers::ALT,
-                "Super" => modifiers |= Modifiers::SUPER,
-                key => {
-                    code = Some(match key {
-                        "M" => Code::KeyM,
-                        // Add more key mappings as needed
-                        _ => return Err("Unsupported key in shortcut".into()),
-                    });
-                }
+            let part = part.trim().to_uppercase();
+            match part.as_str() {
+                "CTRL" | "CONTROL" => modifiers |= Modifiers::CONTROL,
+                "SHIFT" => modifiers |= Modifiers::SHIFT,
+                "ALT" => modifiers |= Modifiers::ALT,
+                "SUPER" | "WIN" | "CMD" | "COMMAND" => modifiers |= Modifiers::SUPER,
+                input_key => key_part = Some(input_key.to_string()),
             }
         }
         
-        let shortcut = Shortcut::new(Some(modifiers), code.unwrap_or(Code::KeyM));
+        // Parse the key using Code's FromStr implementation
+        let code = match key_part {
+            Some(input_key) => {
+                let formatted_key = format_key_for_code(&input_key);
+                formatted_key.parse::<Code>()
+                    .map_err(|_| format!("Invalid key in shortcut: {}", input_key))?
+            }
+            None => return Err("No key specified in shortcut".into()),
+        };
+
+        let shortcut = Shortcut::new(Some(modifiers), code);
         let app_handle = app.handle().clone();
         let app_handle_clone = app_handle.clone();
 
