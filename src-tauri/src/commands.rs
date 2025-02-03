@@ -88,15 +88,48 @@ pub async fn submit_screenshot(app_handle: tauri::AppHandle, screenshot_id: i32)
 
 #[tauri::command]
 pub async fn reload_shortcut(app_handle: tauri::AppHandle) -> Result<(), String> {
-    use tauri_plugin_global_shortcut::GlobalShortcutExt;
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Modifiers, Code};
+    use std::str::FromStr;
+    use crate::shortcuts::{get_shortcut, format_key_for_code, register_shortcut};
 
     // Unregister all existing shortcuts
     app_handle.global_shortcut().unregister_all()
         .map_err(|e| format!("Failed to unregister shortcuts: {}", e))?;
 
-    // Re-register shortcuts using the existing function
-    crate::shortcuts::register_shortcuts(&app_handle)
-        .map_err(|e| format!("Failed to register shortcuts: {}", e))?;
+    // Get the new shortcut from settings
+    let shortcut_str = get_shortcut(&app_handle)
+        .map_err(|e| format!("Failed to get shortcut: {}", e))?;
+
+    // Parse the shortcut string
+    let parts: Vec<&str> = shortcut_str.split('+').collect();
+    let mut modifiers = Modifiers::empty();
+    let mut key_part = None;
+
+    // Process each part of the shortcut string
+    for part in parts.iter() {
+        let part = part.trim().to_uppercase();
+        match part.as_str() {
+            "CTRL" | "CONTROL" => modifiers |= Modifiers::CONTROL,
+            "SHIFT" => modifiers |= Modifiers::SHIFT,
+            "ALT" => modifiers |= Modifiers::ALT,
+            "SUPER" | "WIN" | "CMD" | "COMMAND" => modifiers |= Modifiers::SUPER,
+            input_key => key_part = Some(input_key.to_string()),
+        }
+    }
+
+    // Parse the key using Code's FromStr implementation
+    let code = match key_part {
+        Some(input_key) => {
+            let formatted_key = format_key_for_code(&input_key);
+            formatted_key.parse::<Code>()
+                .map_err(|_| format!("Invalid key in shortcut: {}", input_key))?
+        }
+        None => return Err("No key specified in shortcut".into()),
+    };
+
+    let shortcut = Shortcut::new(Some(modifiers), code);
+    register_shortcut(&app_handle, shortcut)
+        .map_err(|e| format!("Failed to register shortcut: {}", e))?;
 
     Ok(())
 }
