@@ -157,6 +157,55 @@ pub fn format_key_for_code(input_key: &str) -> String {
     }
 }
 
+pub fn setup_shortcut_handler(app_handle: &AppHandle) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let app_handle_clone = app_handle.clone();
+
+    app_handle.plugin(
+        tauri_plugin_global_shortcut::Builder::new()
+            .with_handler(move |_shortcut_handle, shortcut_pressed, event| {
+                if event.state() == ShortcutState::Pressed {
+                    // Check if we're already processing a screenshot
+                    if IS_PROCESSING.load(Ordering::SeqCst) {
+                        println!("Screenshot processing in progress, please wait...");
+                        return;
+                    }
+
+                    // Set the processing flag
+                    IS_PROCESSING.store(true, Ordering::SeqCst);
+                    println!("Taking screenshot...");
+
+                    let _ = app_handle_clone.emit("screenshot-status", "capturing");
+
+                    let handle = app_handle_clone.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let _result = async {
+                            if let Ok(Some(base64_image)) = capture_screenshot(&handle).await {
+                                match crop_image(&handle, &base64_image, crop::CropRegion::MissionSummary).await {
+                                    Ok(_) => {
+                                        let _ = perform_ocr(&handle, &base64_image).await;
+                                    }
+                                    Err(e) => println!("Error in cropping: {:?}", e),
+                                }
+                            }
+                        }.await;
+
+                        // Reset the processing flag when we're done
+                        IS_PROCESSING.store(false, Ordering::SeqCst);
+                    });
+                }
+            })
+            .build(),
+    )?;
+
+    Ok(())
+}
+
+pub fn register_shortcut(app_handle: &AppHandle, shortcut: Shortcut) -> Result<(), Box<dyn Error + Send + Sync>> {
+    // Register the shortcut
+    app_handle.global_shortcut().register(shortcut)?;
+    Ok(())
+}
+
 pub fn register_shortcuts(app_handle: &AppHandle) -> Result<(), Box<dyn Error + Send + Sync>> {
     #[cfg(desktop)]
     {
@@ -189,46 +238,7 @@ pub fn register_shortcuts(app_handle: &AppHandle) -> Result<(), Box<dyn Error + 
         };
 
         let shortcut = Shortcut::new(Some(modifiers), code);
-        let app_handle_clone = app_handle.clone();
-
-        app_handle.plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(move |_shortcut_handle, shortcut_pressed, event| {
-                    if shortcut_pressed == &shortcut && event.state() == ShortcutState::Pressed {
-                        // Check if we're already processing a screenshot
-                        if IS_PROCESSING.load(Ordering::SeqCst) {
-                            println!("Screenshot processing in progress, please wait...");
-                            return;
-                        }
-
-                        // Set the processing flag
-                        IS_PROCESSING.store(true, Ordering::SeqCst);
-                        println!("Taking screenshot...");
-
-                        // let _ = app_handle.emit("close-screenshot-viewer", ());
-                        let _ = app_handle_clone.emit("screenshot-status", "capturing");
-
-                        let handle = app_handle_clone.clone();
-                        tauri::async_runtime::spawn(async move {
-                            let _result = async {
-                                if let Ok(Some(base64_image)) = capture_screenshot(&handle).await {
-                                    match crop_image(&handle, &base64_image, crop::CropRegion::MissionSummary).await {
-                                        Ok(_) => {
-                                            let _ = perform_ocr(&handle, &base64_image).await;
-                                        }
-                                        Err(e) => println!("Error in cropping: {:?}", e),
-                                    }
-                                }
-                            }.await;
-
-                            // Reset the processing flag when we're done
-                            IS_PROCESSING.store(false, Ordering::SeqCst);
-                        });
-                    }
-                })
-                .build(),
-        )?;
-        app_handle.global_shortcut().register(shortcut)?;
+        register_shortcut(app_handle, shortcut)?;
     }
     Ok(())
 }

@@ -62,6 +62,10 @@ pub fn run() {
                     }
                 }
 
+                // Set up the shortcut handler first
+                shortcuts::setup_shortcut_handler(&app.handle()).map_err(|e| anyhow!("Failed to setup shortcut handler: {}", e))?;
+                
+                // Then register the initial shortcuts
                 shortcuts::register_shortcuts(&app.handle()).map_err(|e| anyhow!("Failed to register shortcuts: {}", e))?;
                 Ok(())
             })
