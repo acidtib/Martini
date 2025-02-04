@@ -1,4 +1,4 @@
-use image::{GenericImageView, ImageError};
+use image::{GenericImageView, ImageError, DynamicImage};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use std::io::Cursor;
 use tauri::{path::BaseDirectory, AppHandle, Emitter, Manager, Runtime};
@@ -115,7 +115,7 @@ pub fn process_crop<R: Runtime>(app: &AppHandle<R>, base64_image: &str, region: 
     })?;
 
     // Load the image
-    let mut img = image::load_from_memory(&image_data)?;
+    let img = image::load_from_memory(&image_data)?;
     
     // Get dimensions
     let (width, height) = img.dimensions();
@@ -127,19 +127,22 @@ pub fn process_crop<R: Runtime>(app: &AppHandle<R>, base64_image: &str, region: 
     let (x, y, crop_width, crop_height) = calculate_proportional_dimensions(width, height, &config);
     
     // Crop the image
-    let cropped = img.crop(x, y, crop_width, crop_height);
+    let cropped = img.crop_imm(x, y, crop_width, crop_height);
     
-    // Save the cropped image as JPEG for viewing
+    // Enhance contrast for OCR using image::DynamicImage::adjust_contrast
+    let enhanced = DynamicImage::ImageRgba8(cropped.into()).adjust_contrast(30.0);
+
+    // Save the enhanced image as JPEG for debugging
     // Create debug directory if it doesn't exist
     let debug_path = app.path().resolve("debug_images", BaseDirectory::AppData)
         .map_err(|e| ImageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
     std::fs::create_dir_all(&debug_path).map_err(|e| ImageError::IoError(e))?;
     let filename = format!("{}/{:?}.jpg", debug_path.to_str().unwrap(), region);
-    cropped.save(&filename)?;
+    enhanced.to_rgb8().save(&filename)?;
 
     let mut buffer = Cursor::new(Vec::new());
     let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buffer, 85);
-    encoder.encode_image(&cropped)?;
+    encoder.encode_image(&enhanced.to_rgb8())?;
     let encoded = BASE64.encode(buffer.into_inner());
     
     Ok(encoded)
